@@ -125,7 +125,7 @@ namespace Kui::UI
         for( int i = 0; i < dayCount; i++ )
         {
             int64_t const from = Core::DayStart( monday + i );
-            int64_t const to = from + 86400;
+            int64_t const to = Core::DayStart( monday + i + 1 );   // 23 or 25 h on DST days
             std::vector<Core::Entry const*> entries = Core::Span( m_entries, from, to );
             if( live.has_value() && live->m_end > from && live->m_start < to )
             {

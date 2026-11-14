@@ -31,7 +31,6 @@ namespace Kui::UI
         m_settings = m_store.LoadSettings();
         m_settings.m_textScale = std::clamp( m_settings.m_textScale, g_minTextScale, g_maxTextScale );
         ImGui::GetStyle().FontScaleMain = m_settings.m_textScale;
-        m_autostart = m_isScreenshot || Platform::IsAutostartEnabled();
         if( m_settings.m_checkUpdates && !m_isScreenshot )
         {
             CheckForUpdate();

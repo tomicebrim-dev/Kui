@@ -20,6 +20,9 @@ namespace Kui::Tracker
     constexpr UINT g_menuOpen = 1;
     constexpr UINT g_menuExit = 2;
 
+    // Seconds between two 1 s ticks that can only mean sleep or hibernate (or the clock jumped)
+    constexpr int64_t g_sleepGapSecs = 30;
+
     // Set by the poll thread, read by the tray window for its tooltip
     static std::atomic<bool> g_safeMode = false;
 
@@ -171,11 +174,26 @@ namespace Kui::Tracker
         int64_t lastScan = 0;
         int64_t lastAntiCheatCheck = 0;
         bool antiCheat = false; // Safe mode: a game's anti-cheat is running, so skip the all-window scan
+        int64_t lastTick = Core::Now();
 
         while( true )
         {
             std::this_thread::sleep_for( std::chrono::milliseconds( 1000 ) );
             int64_t const t = Core::Now();
+
+            // A long gap between ticks means the PC slept: a rule timer ends when it went to sleep.
+            // Idle time can't catch this when the wake-up keypress resets it.
+            if( t - lastTick > g_sleepGapSecs )
+            {
+                std::optional<Core::Timer> const timer = store.LoadTimer();
+                if( timer && timer->m_rule )
+                {
+                    store.StopTimer( std::max( lastTick, timer->m_start ) );
+                }
+                pending.reset();
+                lastSeen.reset();
+            }
+            lastTick = t;
 
             auto const modified = store.Modified( "settings.json" );
             if( modified != settingsTime )

@@ -167,7 +167,6 @@ namespace Kui::UI
         std::vector<std::string>                            m_recent;
         std::optional<std::filesystem::file_time_type>      m_entriesStamp;
         double                                              m_checkedAt = -1000.0;
-        bool                                                m_autostart = false;
 
         // Caches rebuilt only when entries.jsonl changes
         std::unordered_map<Core::Day, int64_t>              m_daySecs;

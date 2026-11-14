@@ -63,6 +63,7 @@ namespace Kui::Core
         float               m_workHours = 8.0f;
         float               m_textScale = 1.2f;     // Multiplies every text size
         bool                m_checkUpdates = true;  // Look for a new release when the window opens
+        bool                m_autostart = true;     // The user's choice; the installer rewrites the Run key on every update
     };
 
     // The one running timer, started by hand or by a rule
@@ -166,6 +167,9 @@ namespace Kui::Core
         void SavePlacement( Placement const& p ) const;
 
         private:
+
+        // Entries from entries.jsonl text; bad lines are skipped
+        static std::vector<Entry> ParseEntries( std::string const& text );
 
         std::filesystem::path File( std::string const& name ) const;
 

@@ -3,10 +3,12 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <format>
 #include <fstream>
 #include <sstream>
+#include <thread>
 
 #include "Core/Text.h"
 #include "Core/TimeUtil.h"
@@ -30,16 +32,28 @@ namespace Kui::Core
         return static_cast<bool>( file );
     }
 
-    // Write to .tmp then rename, so a reader never sees half a file
+    // Write to .tmp then rename, so a reader never sees half a file.
+    // The rename fails while the other process has the file open for a read, so retry for a moment.
     static void WriteAtomic( std::filesystem::path const& path, std::string const& body )
     {
         std::filesystem::path tmp = path;
         tmp += ".tmp";
-        if( WriteFile( tmp, body ) )
+        if( !WriteFile( tmp, body ) )
         {
-            std::error_code ec;
-            std::filesystem::rename( tmp, path, ec );
+            return;
         }
+
+        std::error_code ec;
+        for( int attempt = 0; attempt < 50; attempt++ )
+        {
+            std::filesystem::rename( tmp, path, ec );
+            if( !ec )
+            {
+                return;
+            }
+            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+        }
+        std::filesystem::remove( tmp, ec );
     }
 
     static std::optional<nlohmann::ordered_json> ReadJson( std::filesystem::path const& path )
@@ -223,6 +237,7 @@ namespace Kui::Core
         Get( *j, "work_hours", s.m_workHours );
         Get( *j, "text_scale", s.m_textScale );
         Get( *j, "check_updates", s.m_checkUpdates );
+        Get( *j, "autostart", s.m_autostart );
         return s;
     }
 
@@ -253,6 +268,7 @@ namespace Kui::Core
         j["work_hours"] = s.m_workHours;
         j["text_scale"] = s.m_textScale;
         j["check_updates"] = s.m_checkUpdates;
+        j["autostart"] = s.m_autostart;
         WriteAtomic( File( "settings.json" ), j.dump( 2 ) );
     }
 
@@ -321,8 +337,47 @@ namespace Kui::Core
 
     std::vector<Entry> Store::LoadEntries() const
     {
+        return ParseEntries( ReadFile( File( "entries.jsonl" ) ) );
+    }
+
+    // ponytail: a tracker append landing between the size check and the rename is still lost (microsecond window).
+    // A single writer (see StopTimer) closes it.
+    void Store::RewriteEntries( std::vector<Entry> const& del, std::vector<Entry> const& edit, std::string const& description, std::string const& project ) const
+    {
+        std::filesystem::path const path = File( "entries.jsonl" );
+        for( int attempt = 0; attempt < 10; attempt++ )
+        {
+            std::string const before = ReadFile( path );
+            std::string body;
+            for( Entry& e : ParseEntries( before ) )
+            {
+                if( std::any_of( del.begin(), del.end(), [&]( Entry const& d ) { return SameEntry( d, e ); } ) )
+                {
+                    continue;
+                }
+
+                if( std::any_of( edit.begin(), edit.end(), [&]( Entry const& d ) { return SameEntry( d, e ); } ) )
+                {
+                    e.m_description = description;
+                    e.m_project = project;
+                }
+                body += EntryLine( e ) + "\n";
+            }
+
+            // The tracker appended meanwhile: start over so its entry isn't dropped
+            std::error_code ec;
+            if( std::filesystem::file_size( path, ec ) == before.size() || ec )
+            {
+                WriteAtomic( path, body );
+                return;
+            }
+        }
+    }
+
+    std::vector<Entry> Store::ParseEntries( std::string const& text )
+    {
         std::vector<Entry> out;
-        std::istringstream in( ReadFile( File( "entries.jsonl" ) ) );
+        std::istringstream in( text );
         for( std::string line; std::getline( in, line ); )
         {
             nlohmann::ordered_json const j = nlohmann::ordered_json::parse( line, nullptr, false );
@@ -340,26 +395,6 @@ namespace Kui::Core
             out.push_back( std::move( e ) );
         }
         return out;
-    }
-
-    void Store::RewriteEntries( std::vector<Entry> const& del, std::vector<Entry> const& edit, std::string const& description, std::string const& project ) const
-    {
-        std::string body;
-        for( Entry& e : LoadEntries() )
-        {
-            if( std::any_of( del.begin(), del.end(), [&]( Entry const& d ) { return SameEntry( d, e ); } ) )
-            {
-                continue;
-            }
-
-            if( std::any_of( edit.begin(), edit.end(), [&]( Entry const& d ) { return SameEntry( d, e ); } ) )
-            {
-                e.m_description = description;
-                e.m_project = project;
-            }
-            body += EntryLine( e ) + "\n";
-        }
-        WriteAtomic( File( "entries.jsonl" ), body );
     }
 
     std::optional<std::filesystem::path> Store::ExportCsv() const

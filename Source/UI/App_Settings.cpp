@@ -28,9 +28,10 @@ namespace Kui::UI
         // General
         Caption( "GENERAL" );
         BeginCard( "general" );
-        if( ImGui::Checkbox( "Start with Windows", &m_autostart ) && !m_isScreenshot )
+        if( ImGui::Checkbox( "Start with Windows", &m_settings.m_autostart ) && !m_isScreenshot )
         {
-            Platform::SetAutostart( m_autostart );
+            Platform::SetAutostart( m_settings.m_autostart );
+            changed = true;
         }
 
         ImGui::AlignTextToFramePadding();

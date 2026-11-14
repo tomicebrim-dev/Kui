@@ -4,6 +4,7 @@
 #include <format>
 #include <fstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <windows.h>
@@ -142,10 +143,22 @@ namespace Kui::Tests
         settings.m_workHours = 7.5f;
         settings.m_textScale = 1.4f;
         settings.m_checkUpdates = false;
+        settings.m_autostart = false;
         store.SaveSettings( settings );
-        Core::Settings const back = store.LoadSettings();
+        Core::Settings back = store.LoadSettings();
         CHECK( back.m_rules.size() == 1 && back.m_rules[0].m_mode == Core::Mode::AllWords && back.m_workHours == 7.5f );
-        CHECK( back.m_textScale == 1.4f && !back.m_checkUpdates );
+        CHECK( back.m_textScale == 1.4f && !back.m_checkUpdates && !back.m_autostart );
+
+        // A save while the other process is reading the file waits for the read instead of being dropped
+        {
+            std::ifstream reader( dir / "settings.json" );
+            std::thread closer( [&reader] { std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) ); reader.close(); } );
+            settings.m_workHours = 6.0f;
+            store.SaveSettings( settings );
+            closer.join();
+        }
+        back = store.LoadSettings();
+        CHECK( back.m_workHours == 6.0f );
 
         std::filesystem::remove_all( dir );
     }

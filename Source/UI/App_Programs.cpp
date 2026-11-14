@@ -40,7 +40,7 @@ namespace Kui::UI
 
         BeginCard( "add" );
         Caption( "ADD A PROGRAM" );
-        Label( "Open right now — click to track", 13.0f, g_muted );
+        Label( "Open right now, click to track", 13.0f, g_muted );
         if( std::optional<std::string> const clicked = Chips( "open", open, "Nothing new is open." ) )
         {
             add = clicked;

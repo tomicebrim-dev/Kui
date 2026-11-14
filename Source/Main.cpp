@@ -328,6 +328,16 @@ namespace Kui
         store.SaveRecent( { "Discord", "Photoshop", "Teams" } );
     }
 
+    // The installer rewrites the Run key on every update; put back the user's choice (on by default)
+    static void ApplyAutostart( Core::Store const& store )
+    {
+        bool const on = store.LoadSettings().m_autostart;
+        if( on != Platform::IsAutostartEnabled() )
+        {
+            Platform::SetAutostart( on );
+        }
+    }
+
     //-------------------------------------------------------------------------
 
     static int Run( std::vector<std::wstring> const& args )
@@ -346,7 +356,9 @@ namespace Kui
         SetProcessDpiAwarenessContext( DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 );
         if( hasArg( L"--tracker" ) )
         {
-            return Tracker::Run( Core::Store( Core::Store::DefaultDir() ) );
+            Core::Store const store( Core::Store::DefaultDir() );
+            ApplyAutostart( store );
+            return Tracker::Run( store );
         }
 
         std::optional<std::wstring> const screenshot = argValue( L"--screenshot" );
@@ -372,11 +384,7 @@ namespace Kui
                 return 0;
             }
 
-            // m_firstRunDone is set when the setup screens finish
-            if( !store.LoadSettings().m_firstRunDone )
-            {
-                Platform::SetAutostart( true );
-            }
+            ApplyAutostart( store );
 
             if( !Tracker::IsAlive( store.LoadStatus() ) )
             {
