@@ -17,23 +17,45 @@ namespace Kui::UI
         return ImGui::ColorConvertU32ToFloat4( color );
     }
 
-    // Adds a font plus the symbol fallback. Returns nullptr if the font file is missing.
-    static ImFont* AddFont( std::filesystem::path const& fonts, char const* pFile )
+    // Adds a memory-mapped font file to the atlas. File-backed pages are shared with the OS cache instead of
+    // ~7 MB of private heap copies. Never unmapped: ImGui reads glyphs on demand for the process lifetime.
+    static ImFont* AddMappedFont( std::filesystem::path const& path, bool merge )
     {
-        ImGuiIO& io = ImGui::GetIO();
-        std::filesystem::path const path = fonts / pFile;
-        if( !std::filesystem::exists( path ) )
+        HANDLE const file = CreateFileW( path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr );
+        if( file == INVALID_HANDLE_VALUE )
         {
             return nullptr;
         }
 
-        ImFont* pFont = io.Fonts->AddFontFromFileTTF( Core::Narrow( path.wstring() ).c_str() );
-        std::filesystem::path const symbols = fonts / "seguisym.ttf";
-        if( std::filesystem::exists( symbols ) )
+        LARGE_INTEGER size = {};
+        GetFileSizeEx( file, &size );
+        HANDLE const mapping = CreateFileMappingW( file, nullptr, PAGE_READONLY, 0, 0, nullptr );
+        CloseHandle( file );
+        if( mapping == nullptr )
         {
-            ImFontConfig config;
-            config.MergeMode = true;
-            io.Fonts->AddFontFromFileTTF( Core::Narrow( symbols.wstring() ).c_str(), 0.0f, &config );
+            return nullptr;
+        }
+
+        void* const pData = MapViewOfFile( mapping, FILE_MAP_READ, 0, 0, 0 );
+        CloseHandle( mapping ); // The view keeps the mapping alive
+        if( pData == nullptr )
+        {
+            return nullptr;
+        }
+
+        ImFontConfig config;
+        config.FontDataOwnedByAtlas = false;
+        config.MergeMode = merge;
+        return ImGui::GetIO().Fonts->AddFontFromMemoryTTF( pData, static_cast<int>( size.QuadPart ), 0.0f, &config );
+    }
+
+    // Adds a font plus the symbol fallback. Returns nullptr if the font file is missing.
+    static ImFont* AddFont( std::filesystem::path const& fonts, char const* pFile )
+    {
+        ImFont* const pFont = AddMappedFont( fonts / pFile, false );
+        if( pFont != nullptr )
+        {
+            AddMappedFont( fonts / "seguisym.ttf", true );
         }
         return pFont;
     }
