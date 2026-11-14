@@ -84,7 +84,7 @@ namespace Kui::Setup
             char const*     m_pPath;
         };
 
-        constexpr UninstallKey keys[] =
+        static UninstallKey const keys[] =
         {
             { HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall" },
             { HKEY_LOCAL_MACHINE, "Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall" },

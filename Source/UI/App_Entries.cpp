@@ -155,8 +155,8 @@ namespace Kui::UI
                 {
                     Group const& group = m_groups[row.m_index];
                     float const centerY = pos.y + Px( 24 );
-                    DrawText( pDrawList, ImVec2( pos.x, centerY ), Core::DayName( group.m_key.m_day, today ), 14.0f, g_muted, true );
-                    DrawText( pDrawList, ImVec2( pos.x + width, centerY ), Core::FormatHM( m_daySecs[group.m_key.m_day] ), 13.5f, g_muted, true, 1.0f );
+                    TextAt( pDrawList, ImVec2( pos.x, centerY ), Core::DayName( group.m_key.m_day, today ), 14.0f, g_muted, true );
+                    TextAt( pDrawList, ImVec2( pos.x + width, centerY ), Core::FormatHM( m_daySecs[group.m_key.m_day] ), 13.5f, g_muted, true, 1.0f );
                 }
                 break;
 
@@ -238,12 +238,12 @@ namespace Kui::UI
                     right -= Px( g_actionSlot );
 
                     std::string const total = Core::FormatHMS( group.m_total );
-                    DrawText( pDrawList, ImVec2( right, centerY ), total, 14.5f, g_text, true, 1.0f );
+                    TextAt( pDrawList, ImVec2( right, centerY ), total, 14.5f, g_text, true, 1.0f );
                     right -= TextWidth( total, 14.5f, true ) + Px( 14 );
                     if( right - pos.x > Px( 320 ) )
                     {
                         std::string const range = Core::ClockHM( group.m_first ) + " – " + Core::ClockHM( group.m_last );
-                        DrawText( pDrawList, ImVec2( right, centerY ), range, g_bodySize, g_muted, false, 1.0f );
+                        TextAt( pDrawList, ImVec2( right, centerY ), range, g_bodySize, g_muted, false, 1.0f );
                         right -= TextWidth( range ) + Px( 14 );
                     }
 
@@ -269,7 +269,7 @@ namespace Kui::UI
                         pDrawList->AddRectFilled( pillMin, pillMax, ImGui::IsItemHovered() ? g_hover : g_card, Px( 10 ) );
                         pDrawList->AddRect( pillMin, pillMax, g_line, Px( 10 ) );
                         std::string const count = std::format( "{} {}", group.m_items.size(), open ? "▴" : "▾" );
-                        DrawText( pDrawList, ImVec2( x + Px( 18 ), centerY ), count, 12.0f, open ? g_accent : g_muted, false, 0.5f );
+                        TextAt( pDrawList, ImVec2( x + Px( 18 ), centerY ), count, 12.0f, open ? g_accent : g_muted, false, 0.5f );
                         x += Px( 44 );
                     }
 
@@ -290,19 +290,19 @@ namespace Kui::UI
                         ImGui::SetMouseCursor( ImGuiMouseCursor_TextInput );
                     }
                     ImGui::SetItemTooltip( "Click to rename or set a project" );
-                    DrawText( pDrawList, ImVec2( x, centerY ), name, g_bodySize, hasName ? g_text : g_muted );
+                    TextAt( pDrawList, ImVec2( x, centerY ), name, g_bodySize, hasName ? g_text : g_muted );
                     x += nameWidth + Px( 8 );
 
                     if( !group.m_key.m_project.empty() && right - x > Px( 120 ) )
                     {
                         std::string const project = Ellipsize( group.m_key.m_project, right - x - Px( 50 ) );
-                        DrawText( pDrawList, ImVec2( x, centerY ), project, g_bodySize, ColorFor( group.m_key.m_project ) );
+                        TextAt( pDrawList, ImVec2( x, centerY ), project, g_bodySize, ColorFor( group.m_key.m_project ) );
                         x += TextWidth( project ) + Px( 8 );
                     }
 
                     if( group.m_isAuto && right - x > Px( 60 ) )
                     {
-                        DrawText( pDrawList, ImVec2( x, centerY ), "AUTO", 10.5f, Fade( g_accent, 0.8f ), true );
+                        TextAt( pDrawList, ImVec2( x, centerY ), "AUTO", 10.5f, Fade( g_accent, 0.8f ), true );
                         if( IsHovered( ImVec2( x, centerY - Px( 8 ) ), ImVec2( x + TextWidth( "AUTO", 10.5f, true ), centerY + Px( 8 ) ) ) )
                         {
                             ImGui::SetTooltip( "Tracked by a program rule" );
@@ -332,9 +332,9 @@ namespace Kui::UI
                     right -= Px( g_actionSlot );
 
                     std::string const length = Core::FormatHMS( entry.m_end - entry.m_start );
-                    DrawText( pDrawList, ImVec2( right, centerY ), length, 13.5f, g_text, false, 1.0f );
+                    TextAt( pDrawList, ImVec2( right, centerY ), length, 13.5f, g_text, false, 1.0f );
                     right -= TextWidth( length, 13.5f ) + Px( 8 );
-                    DrawText( pDrawList, ImVec2( right, centerY ), Core::ClockHM( entry.m_start ) + " – " + Core::ClockHM( entry.m_end ), 13.5f, g_muted, false, 1.0f );
+                    TextAt( pDrawList, ImVec2( right, centerY ), Core::ClockHM( entry.m_start ) + " – " + Core::ClockHM( entry.m_end ), 13.5f, g_muted, false, 1.0f );
                 }
                 break;
             }

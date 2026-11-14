@@ -40,7 +40,7 @@ namespace Kui::UI
 
     // Paints text vertically centered on pos.y. alignX: 0 = left of pos, 0.5 = centered, 1 = right of pos.
     // A maxWidth > 0 truncates with an ellipsis.
-    void DrawText( ImDrawList* pDrawList, ImVec2 pos, std::string_view text, float size, ImU32 color, bool semibold = false, float alignX = 0.0f, float maxWidth = 0.0f );
+    void TextAt( ImDrawList* pDrawList, ImVec2 pos, std::string_view text, float size, ImU32 color, bool semibold = false, float alignX = 0.0f, float maxWidth = 0.0f );
 
     // A padded, rounded, auto-height panel. Always pair with EndCard().
     void BeginCard( char const* pId, ImU32 border = g_line, float padding = 18.0f, float rounding = 12.0f, ImU32 fill = g_card, float width = 0.0f );

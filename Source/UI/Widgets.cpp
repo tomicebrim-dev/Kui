@@ -72,7 +72,7 @@ namespace Kui::UI
         return cut + "…";
     }
 
-    void DrawText( ImDrawList* pDrawList, ImVec2 pos, std::string_view text, float size, ImU32 color, bool semibold, float alignX, float maxWidth )
+    void TextAt( ImDrawList* pDrawList, ImVec2 pos, std::string_view text, float size, ImU32 color, bool semibold, float alignX, float maxWidth )
     {
         std::string const shown = maxWidth > 0 ? Ellipsize( text, maxWidth, size, semibold ) : std::string( text );
         float const px = Px( size );
@@ -104,7 +104,7 @@ namespace Kui::UI
         float const height = ImGui::GetTextLineHeight();
         bool const clicked = ImGui::InvisibleButton( pId, ImVec2( TextWidth( text, size, semibold ), height ) );
         ImU32 const shown = ImGui::IsItemHovered() ? g_text : color;
-        DrawText( ImGui::GetWindowDrawList(), ImVec2( pos.x, pos.y + height / 2 ), text, size, shown, semibold );
+        TextAt( ImGui::GetWindowDrawList(), ImVec2( pos.x, pos.y + height / 2 ), text, size, shown, semibold );
         return clicked;
     }
 
@@ -144,10 +144,10 @@ namespace Kui::UI
             pDrawList->AddRectFilled( ImVec2( pos.x, pos.y + Px( 9 ) ), ImVec2( pos.x + Px( 3 ), pos.y + Px( 27 ) ), g_accent, Px( 2 ) );
         }
 
-        DrawText( pDrawList, ImVec2( pos.x + Px( 16 ), centerY ), pLabel, 15.0f, active ? g_text : g_muted, active );
+        TextAt( pDrawList, ImVec2( pos.x + Px( 16 ), centerY ), pLabel, 15.0f, active ? g_text : g_muted, active );
         if( hovered )
         {
-            DrawText( pDrawList, ImVec2( max.x - Px( 12 ), centerY ), pShortcut, 11.5f, g_muted, false, 1.0f );
+            TextAt( pDrawList, ImVec2( max.x - Px( 12 ), centerY ), pShortcut, 11.5f, g_muted, false, 1.0f );
         }
         return clicked;
     }
@@ -181,10 +181,10 @@ namespace Kui::UI
             ImGui::OpenPopup( "projects" );
         }
         ImGui::SetItemTooltip( "Pick a project" );
-        DrawText( pDrawList, ImVec2( max.x - Px( 14 ), centerY ), "▾", 14.0f, ImGui::IsItemHovered() ? g_text : g_muted, false, 0.5f );
+        TextAt( pDrawList, ImVec2( max.x - Px( 14 ), centerY ), "▾", 14.0f, ImGui::IsItemHovered() ? g_text : g_muted, false, 0.5f );
 
         ImGui::SetNextWindowSizeConstraints( ImVec2( Px( 180 ), 0 ), ImVec2( FLT_MAX, Px( 320 ) ) );
-        if( ImGui::BeginPopup( "projects", ImGuiWindowFlags_AlwaysUseWindowPadding ) )
+        if( ImGui::BeginPopup( "projects" ) )
         {
             if( projects.empty() )
             {

@@ -136,8 +136,12 @@ namespace Kui::Core
 
     std::filesystem::path Store::DefaultDir()
     {
-        wchar_t const* pAppData = _wgetenv( L"APPDATA" );
-        return std::filesystem::path( pAppData ? pAppData : L"." ) / L"Kui";
+        wchar_t* pAppData = nullptr;
+        size_t length = 0;
+        _wdupenv_s( &pAppData, &length, L"APPDATA" );
+        std::filesystem::path const dir = std::filesystem::path( pAppData ? pAppData : L"." ) / L"Kui";
+        std::free( pAppData );
+        return dir;
     }
 
     bool Store::BumpRecent( std::vector<std::string>& list, std::string const& app )

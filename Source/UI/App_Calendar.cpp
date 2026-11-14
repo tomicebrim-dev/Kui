@@ -154,21 +154,21 @@ namespace Kui::UI
             float const cx = header.x + gutter + columnWidth * ( static_cast<float>( i ) + 0.5f );
             std::string name = Core::FormatDay( day, "{:%a}" );
             std::ranges::transform( name, name.begin(), []( unsigned char c ) { return static_cast<char>( std::toupper( c ) ); } );
-            DrawText( pDrawList, ImVec2( cx, header.y + Px( 10 ) ), name, 11.5f, isToday ? g_accent : g_muted, true, 0.5f );
+            TextAt( pDrawList, ImVec2( cx, header.y + Px( 10 ) ), name, 11.5f, isToday ? g_accent : g_muted, true, 0.5f );
 
             ImVec2 const circle( cx, header.y + Px( 32 ) );
             if( isToday )
             {
                 pDrawList->AddCircleFilled( circle, Px( 15 ), g_accent );
             }
-            DrawText( pDrawList, circle, std::to_string( Core::DayOfMonth( day ) ), 17.0f, isToday ? g_side : g_text, true, 0.5f );
+            TextAt( pDrawList, circle, std::to_string( Core::DayOfMonth( day ) ), 17.0f, isToday ? g_side : g_text, true, 0.5f );
 
             int64_t total = 0;
             for( Piece const& piece : columns[i] )
             {
                 total += piece.m_end - piece.m_start;
             }
-            DrawText( pDrawList, ImVec2( cx, header.y + Px( 56 ) ), total > 0 ? Core::FormatHM( total ) : "–", 12.0f, g_muted, false, 0.5f );
+            TextAt( pDrawList, ImVec2( cx, header.y + Px( 56 ) ), total > 0 ? Core::FormatHM( total ) : "–", 12.0f, g_muted, false, 0.5f );
         }
         pDrawList->AddLine( ImVec2( header.x, header.y + Px( 68 ) ), ImVec2( header.x + width, header.y + Px( 68 ) ), g_line );
         ImGui::Dummy( ImVec2( width, Px( 68 ) ) );
@@ -202,7 +202,7 @@ namespace Kui::UI
             pDrawList->AddLine( ImVec2( x0, y + hourHeight / 2 ), ImVec2( top.x + width, y + hourHeight / 2 ), Fade( g_line, 0.22f ) );
             if( h > 0 )
             {
-                DrawText( pDrawList, ImVec2( x0 - Px( 10 ), y ), std::format( "{:02}:00", h ), 12.0f, g_muted, false, 1.0f );
+                TextAt( pDrawList, ImVec2( x0 - Px( 10 ), y ), std::format( "{:02}:00", h ), 12.0f, g_muted, false, 1.0f );
             }
         }
 
@@ -319,12 +319,12 @@ namespace Kui::UI
                 if( height >= Px( 18 ) )
                 {
                     float const titleTop = ( std::min( height, Px( 22 ) ) - Px( 17 ) ) / 2 + Px( 1 );
-                    DrawText( pDrawList, ImVec2( min.x + Px( 9 ), min.y + titleTop + Px( 8.5f ) ), title, 12.5f, g_text, true, 0.0f, textWidth );
+                    TextAt( pDrawList, ImVec2( min.x + Px( 9 ), min.y + titleTop + Px( 8.5f ) ), title, 12.5f, g_text, true, 0.0f, textWidth );
                 }
 
                 if( height >= Px( 38 ) )
                 {
-                    DrawText( pDrawList, ImVec2( min.x + Px( 9 ), min.y + Px( 28 ) ), range + " · " + Core::FormatHM( secs ), 11.5f, Fade( g_text, 0.7f ), false, 0.0f, textWidth );
+                    TextAt( pDrawList, ImVec2( min.x + Px( 9 ), min.y + Px( 28 ) ), range + " · " + Core::FormatHM( secs ), 11.5f, Fade( g_text, 0.7f ), false, 0.0f, textWidth );
                 }
 
                 if( hovered )

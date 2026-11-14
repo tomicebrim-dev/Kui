@@ -57,7 +57,7 @@ namespace Kui::UI
         ImGui::PopFont();
         bool const descriptionFocused = ImGui::IsItemActive();
         toggle |= !running && ImGui::IsItemDeactivated() && ( ImGui::IsKeyPressed( ImGuiKey_Enter ) || ImGui::IsKeyPressed( ImGuiKey_KeypadEnter ) );
-        DrawText( pDrawList, ImVec2( origin.x, origin.y + Px( 37 ) ), subtitle, 12.5f, g_muted, false, 0.0f, descriptionWidth );
+        TextAt( pDrawList, ImVec2( origin.x, origin.y + Px( 37 ) ), subtitle, 12.5f, g_muted, false, 0.0f, descriptionWidth );
 
         float x = origin.x + descriptionWidth + gap;
         ImGui::SetCursorScreenPos( ImVec2( x, origin.y + Px( 8 ) ) );
@@ -69,7 +69,7 @@ namespace Kui::UI
 
         x += projectWidth + gap;
         std::string const clock = Core::FormatHMS( LiveSecs() );
-        DrawText( pDrawList, ImVec2( x, origin.y + rowHeight / 2 ), clock, 26.0f, running ? g_text : g_muted, true );
+        TextAt( pDrawList, ImVec2( x, origin.y + rowHeight / 2 ), clock, 26.0f, running ? g_text : g_muted, true );
 
         x += TextWidth( clock, 26.0f, true ) + gap;
         ImGui::SetCursorScreenPos( ImVec2( x, origin.y + Px( 9 ) ) );

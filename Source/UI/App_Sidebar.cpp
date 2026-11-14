@@ -44,7 +44,7 @@ namespace Kui::UI
         pDrawList->AddCircleFilled( center, Px( 16 ), g_accent );
         pDrawList->AddCircle( center, Px( 7.5f ), g_side, 0, Px( 2.5f ) );
         pDrawList->AddLine( ImVec2( center.x, center.y - Px( 10 ) ), ImVec2( center.x, center.y - Px( 3 ) ), g_side, Px( 2.5f ) );
-        DrawText( pDrawList, ImVec2( pos.x + Px( 42 ), center.y ), "Kui", 17.0f, g_text, true );
+        TextAt( pDrawList, ImVec2( pos.x + Px( 42 ), center.y ), "Kui", 17.0f, g_text, true );
         ImGui::Dummy( ImVec2( Px( 32 ), Px( 32 ) ) );
         ImGui::Dummy( ImVec2( 0, Px( 10 ) ) );
 
@@ -144,8 +144,8 @@ namespace Kui::UI
             std::string const time = Core::FormatHM( row.m_secs );
             float const timeWidth = TextWidth( time, 12.5f );
             std::string const name = row.m_description.empty() ? "(no description)" : row.m_description;
-            DrawText( pDrawList, ImVec2( rowPos.x, centerY ), name, 13.5f, g_text, false, 0.0f, width - timeWidth - Px( 8 ) );
-            DrawText( pDrawList, ImVec2( rowPos.x + width, centerY ), time, 12.5f, g_muted, false, 1.0f );
+            TextAt( pDrawList, ImVec2( rowPos.x, centerY ), name, 13.5f, g_text, false, 0.0f, width - timeWidth - Px( 8 ) );
+            TextAt( pDrawList, ImVec2( rowPos.x + width, centerY ), time, 12.5f, g_muted, false, 1.0f );
 
             float const barY = rowPos.y + lineHeight + Px( 3 );
             float const fill = std::max( width * static_cast<float>( row.m_secs ) / max, Px( 4 ) );

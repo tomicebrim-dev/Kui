@@ -1,0 +1,62 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "vs",
+      "inherits": "base",
+      "displayName": "Visual Studio x64",
+      "description": "Latest installed Visual Studio generator; works from any shell",
+      "architecture": { "value": "x64", "strategy": "set" }
+    },
+    {
+      "name": "ninja",
+      "inherits": "base",
+      "displayName": "Ninja Multi-Config (MSVC) x64",
+      "description": "For VS Code / CLion / clangd; run from a x64 Developer prompt. Emits compile_commands.json",
+      "generator": "Ninja Multi-Config",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug",   "configurePreset": "vs", "configuration": "Debug" },
+    { "name": "release", "configurePreset": "vs", "configuration": "Release" },
+    { "name": "msi",     "configurePreset": "vs", "configuration": "Release", "targets": ["msi"] },
+    { "name": "ninja-debug",   "configurePreset": "ninja", "configuration": "Debug" },
+    { "name": "ninja-release", "configurePreset": "ninja", "configuration": "Release" }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "vs",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release",
+      "inherits": "debug",
+      "configuration": "Release"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "release",
+      "displayName": "Configure + build + test (Release)",
+      "steps": [
+        { "type": "configure", "name": "vs" },
+        { "type": "build", "name": "release" },
+        { "type": "test", "name": "release" }
+      ]
+    }
+  ]
+}

@@ -201,7 +201,7 @@ namespace Kui::UI
             float const y = plotMax.y - plotHeight * ( hours / topHours );
             pDrawList->AddLine( ImVec2( plotMin.x, y ), ImVec2( plotMax.x, y ), Fade( g_line, k == 0 ? 1.0f : 0.5f ) );
             std::string const label = ( hours == std::floor( hours ) ) ? std::format( "{}h", static_cast<int>( hours ) ) : std::format( "{}m", static_cast<int>( hours * 60 ) );
-            DrawText( pDrawList, ImVec2( plotMin.x - Px( 10 ), y ), label, 12.0f, g_muted, false, 1.0f );
+            TextAt( pDrawList, ImVec2( plotMin.x - Px( 10 ), y ), label, 12.0f, g_muted, false, 1.0f );
         }
 
         auto const yOf = [&]( int64_t secs ) { return plotMax.y - plotHeight * ( static_cast<float>( secs ) / 3600.0f / topHours ); };
@@ -255,12 +255,12 @@ namespace Kui::UI
             if( totals[i] > 0 )
             {
                 std::string const text = showOver ? std::format( "{} (+{})", Core::FormatHM( totals[i] ), Core::FormatHM( over[i] ) ) : Core::FormatHM( totals[i] );
-                DrawText( pDrawList, ImVec2( cx, y - Px( 9 ) ), text, 12.0f, showOver ? g_red : g_muted, false, 0.5f );
+                TextAt( pDrawList, ImVec2( cx, y - Px( 9 ) ), text, 12.0f, showOver ? g_red : g_muted, false, 0.5f );
             }
 
             bool const isToday = day == today;
-            DrawText( pDrawList, ImVec2( cx, plotMax.y + Px( 14 ) ), Core::FormatDay( day, "{:%a}" ), 14.0f, isToday ? g_accent : g_text, isToday, 0.5f );
-            DrawText( pDrawList, ImVec2( cx, plotMax.y + Px( 31 ) ), Core::DayMonth( day ), 12.0f, g_muted, false, 0.5f );
+            TextAt( pDrawList, ImVec2( cx, plotMax.y + Px( 14 ) ), Core::FormatDay( day, "{:%a}" ), 14.0f, isToday ? g_accent : g_text, isToday, 0.5f );
+            TextAt( pDrawList, ImVec2( cx, plotMax.y + Px( 31 ) ), Core::DayMonth( day ), 12.0f, g_muted, false, 0.5f );
 
             if( hovered && totals[i] > 0 )
             {
@@ -313,11 +313,11 @@ namespace Kui::UI
                 float const centerY = pos.y + Px( 11 );
                 float const right = pos.x + width;
                 pDrawList->AddCircleFilled( ImVec2( pos.x + Px( 5 ), centerY ), Px( 4.5f ), ColorFor( project ) );
-                DrawText( pDrawList, ImVec2( pos.x + Px( 18 ), centerY ), project.empty() ? "No project" : project, 14.0f, g_text, false, 0.0f, Px( 166 ) );
+                TextAt( pDrawList, ImVec2( pos.x + Px( 18 ), centerY ), project.empty() ? "No project" : project, 14.0f, g_text, false, 0.0f, Px( 166 ) );
 
                 std::string const percent = std::format( "{:.0f}%", static_cast<float>( secs ) * 100.0f / static_cast<float>( total ) );
-                DrawText( pDrawList, ImVec2( right, centerY ), percent, g_bodySize, g_muted, false, 1.0f );
-                DrawText( pDrawList, ImVec2( right - Px( 56 ), centerY ), Core::FormatHM( secs ), 14.0f, g_text, true, 1.0f );
+                TextAt( pDrawList, ImVec2( right, centerY ), percent, g_bodySize, g_muted, false, 1.0f );
+                TextAt( pDrawList, ImVec2( right - Px( 56 ), centerY ), Core::FormatHM( secs ), 14.0f, g_text, true, 1.0f );
 
                 float const barMin = pos.x + Px( 196 );
                 float const barMax = right - Px( 134 );
