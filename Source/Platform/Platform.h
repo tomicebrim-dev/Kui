@@ -20,6 +20,9 @@ namespace Kui::Platform
     // Window class of the main window, so a second launch can find and focus it
     constexpr wchar_t g_mainWindowClass[] = L"KuiMainWindow";
 
+    // Posted to the main window to open its settings popup
+    constexpr UINT g_openSettingsMessage = WM_APP + 10;
+
     // Our own exe name, never tracked
     constexpr char g_selfExe[] = "kui";
 
@@ -68,8 +71,8 @@ namespace Kui::Platform
     // Restores and focuses an open main window. False if there is none.
     bool FocusMainWindow();
 
-    // Focuses the main window, or starts it when it isn't open
-    void OpenApp();
+    // Focuses the main window, or starts it when it isn't open. `settings` also opens the settings popup.
+    void OpenApp( bool settings = false );
 
     // Opens Explorer with the file selected
     void RevealInExplorer( std::filesystem::path const& file );

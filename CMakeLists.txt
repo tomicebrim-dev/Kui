@@ -68,7 +68,7 @@ add_executable(kui WIN32
   Source/UI/App_Settings.cpp
   ${PROJECT_BINARY_DIR}/Kui.rc)
 target_compile_options(kui PRIVATE ${KUI_OPTS})
-target_link_libraries(kui PRIVATE kui_core imgui windowscodecs ole32)
+target_link_libraries(kui PRIVATE kui_core imgui windowscodecs ole32 uxtheme)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT kui)  # F5 in VS runs kui, not ALL_BUILD
 install(TARGETS kui RUNTIME DESTINATION .)
 

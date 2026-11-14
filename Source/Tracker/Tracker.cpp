@@ -19,6 +19,7 @@ namespace Kui::Tracker
     constexpr UINT g_safeModeMessage = WM_APP + 2; // Poll thread -> tray window: the safe-mode state changed
     constexpr UINT g_menuOpen = 1;
     constexpr UINT g_menuExit = 2;
+    constexpr UINT g_menuSettings = 3;
 
     // Seconds between two 1 s ticks that can only mean sleep or hibernate (or the clock jumped)
     constexpr int64_t g_sleepGapSecs = 30;
@@ -70,10 +71,32 @@ namespace Kui::Tracker
         Shell_NotifyIconW( NIM_DELETE, &data );
     }
 
+    // Dark popup menus. ponytail: undocumented uxtheme ordinals 135/136 (Win10 1903+), owner-drawn menu if they ever go away.
+    static void UseDarkMenus()
+    {
+        HMODULE const hUxTheme = LoadLibraryExW( L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32 );
+        if( hUxTheme == nullptr )
+        {
+            return;
+        }
+
+        using SetPreferredAppMode = int( WINAPI* )( int );
+        using FlushMenuThemes = void( WINAPI* )();
+        auto const pSetMode = reinterpret_cast<SetPreferredAppMode>( GetProcAddress( hUxTheme, MAKEINTRESOURCEA( 135 ) ) );
+        auto const pFlush = reinterpret_cast<FlushMenuThemes>( GetProcAddress( hUxTheme, MAKEINTRESOURCEA( 136 ) ) );
+        if( pSetMode != nullptr && pFlush != nullptr )
+        {
+            pSetMode( 2 );  // ForceDark
+            pFlush();
+        }
+    }
+
     static void ShowTrayMenu( HWND hWnd )
     {
         HMENU hMenu = CreatePopupMenu();
         AppendMenuW( hMenu, MF_STRING, g_menuOpen, L"Open Kui" );
+        AppendMenuW( hMenu, MF_STRING, g_menuSettings, L"Settings" );
+        AppendMenuW( hMenu, MF_SEPARATOR, 0, nullptr );
         AppendMenuW( hMenu, MF_STRING, g_menuExit, L"Exit tracker" );
 
         // Foreground first, or the menu won't close when clicking elsewhere
@@ -84,9 +107,9 @@ namespace Kui::Tracker
         PostMessageW( hWnd, WM_NULL, 0, 0 );
         DestroyMenu( hMenu );
 
-        if( command == g_menuOpen )
+        if( command == g_menuOpen || command == g_menuSettings )
         {
-            Platform::OpenApp();
+            Platform::OpenApp( command == g_menuSettings );
         }
         else if( command == g_menuExit )
         {
@@ -340,6 +363,7 @@ namespace Kui::Tracker
         // Detached: the process exits from the message loop below and takes the thread with it
         std::thread( PollLoop, store ).detach();
 
+        UseDarkMenus();
         WNDCLASSW windowClass {};
         windowClass.lpfnWndProc = TrayWndProc;
         windowClass.hInstance = GetModuleHandleW( nullptr );

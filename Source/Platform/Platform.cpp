@@ -315,11 +315,15 @@ namespace Kui::Platform
         return true;
     }
 
-    void OpenApp()
+    void OpenApp( bool settings )
     {
         if( !FocusMainWindow() )
         {
-            ShellExecuteW( nullptr, nullptr, ExePath().c_str(), nullptr, nullptr, SW_SHOWNORMAL );
+            ShellExecuteW( nullptr, nullptr, ExePath().c_str(), settings ? L"--settings" : nullptr, nullptr, SW_SHOWNORMAL );
+        }
+        else if( settings )
+        {
+            PostMessageW( FindWindowW( g_mainWindowClass, nullptr ), g_openSettingsMessage, 0, 0 );
         }
     }
 

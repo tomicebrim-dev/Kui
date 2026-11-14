@@ -76,6 +76,9 @@ namespace Kui::UI
         // Builds one ImGui frame covering the whole window
         void Draw();
 
+        // Opens the settings popup on the next frame
+        void OpenSettings() { m_openSettings = true; }
+
         private:
 
         // Small files are re-read every call; entries.jsonl (the big one) only when it changed on disk

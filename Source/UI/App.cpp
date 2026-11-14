@@ -416,13 +416,11 @@ namespace Kui::UI
         DrawSidebar();
         ImGui::SameLine( 0, 0 );
 
-        ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( Px( 24 ), Px( 18 ) ) );
-        ImGui::BeginChild( "main", ImVec2( 0, 0 ), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
-        ImGui::PopStyleVar();
-
+        // Top bar spans the main area edge to edge; the view below gets the padding
+        ImGui::BeginChild( "main", ImVec2( 0, 0 ), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
         DrawTopBar();
-        ImGui::Dummy( ImVec2( 0, Px( 2 ) ) );
-        ImGui::BeginChild( "view", ImVec2( 0, 0 ), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+        ImGui::SetCursorPos( ImVec2( Px( 24 ), ImGui::GetCursorPosY() + Px( 10 ) ) );
+        ImGui::BeginChild( "view", ImVec2( -Px( 24 ), -Px( 18 ) ), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
         switch( m_view )
         {
             case View::Timer:

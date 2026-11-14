@@ -17,7 +17,8 @@ namespace Kui::UI
 {
     void App::DrawTopBar()
     {
-        BeginCard( "topBar", g_line, 14.0f, 14.0f );
+        BeginCard( "topBar", g_card, 14.0f, 0.0f );   // Edge-to-edge strip; only its bottom line shows
+        ImGui::Indent( Px( 10 ) );                      // Line up with the view's 24 px margin
         bool const running = m_timer.has_value();
         std::string& description = running ? m_timer->m_description : m_description;
         std::string& project = running ? m_timer->m_project : m_project;
@@ -98,7 +99,9 @@ namespace Kui::UI
         {
             m_suggestionsHovered = false;
         }
+        ImGui::Unindent( Px( 10 ) );
         EndCard();
+        ImGui::GetWindowDrawList()->AddLine( ImVec2( ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y - 1 ), ImVec2( ImGui::GetItemRectMax().x, ImGui::GetItemRectMax().y - 1 ), g_line );
 
         if( toggle )
         {

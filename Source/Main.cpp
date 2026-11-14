@@ -1,6 +1,8 @@
 #include <windows.h>
 #include <d3d11.h>
+#include <dwmapi.h>
 #include <shellapi.h>
+#include <uxtheme.h>
 #include <wincodec.h>
 #include <wrl/client.h>
 
@@ -62,6 +64,7 @@ namespace Kui
         bool                    m_isScreenshot = false;
         UINT                    m_resizeWidth = 0;
         UINT                    m_resizeHeight = 0;
+        bool                    m_openSettings = false;
     };
 
     //-------------------------------------------------------------------------
@@ -195,6 +198,16 @@ namespace Kui
                 {
                     return 0;
                 }
+            }
+            break;
+
+            case Platform::g_openSettingsMessage:
+            {
+                if( pState != nullptr )
+                {
+                    pState->m_openSettings = true;
+                }
+                return 0;
             }
             break;
 
@@ -433,6 +446,16 @@ namespace Kui
         RECT rect = { 0, 0, static_cast<LONG>( g_windowWidth * scale ), static_cast<LONG>( g_windowHeight * scale ) };
         AdjustWindowRectExForDpi( &rect, WS_OVERLAPPEDWINDOW, FALSE, 0, GetDpiForSystem() );
         HWND hWnd = CreateWindowExW( 0, Platform::g_mainWindowClass, L"Kui", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, hInstance, nullptr );
+
+        // Dark title bar in the app's colour, icon and buttons only (caption colour needs Windows 11)
+        BOOL const dark = TRUE;
+        DwmSetWindowAttribute( hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof( dark ) );
+        ImVec4 const side = ImGui::ColorConvertU32ToFloat4( UI::g_side );
+        COLORREF const caption = RGB( side.x * 255.0f, side.y * 255.0f, side.z * 255.0f );
+        DwmSetWindowAttribute( hWnd, DWMWA_CAPTION_COLOR, &caption, sizeof( caption ) );
+        DwmSetWindowAttribute( hWnd, DWMWA_BORDER_COLOR, &caption, sizeof( caption ) );
+        WTA_OPTIONS const noCaption = { WTNCA_NODRAWCAPTION, WTNCA_NODRAWCAPTION };
+        SetWindowThemeAttribute( hWnd, WTA_NONCLIENT, const_cast<WTA_OPTIONS*>( &noCaption ), sizeof( noCaption ) );
         if( isScreenshot )
         {
             // Hidden window: size the client area exactly
@@ -508,6 +531,11 @@ namespace Kui
                 state.m_resizeWidth = 0;
                 state.m_resizeHeight = 0;
                 CreateRenderTarget( graphics );
+            }
+
+            if( std::exchange( state.m_openSettings, false ) )
+            {
+                app.OpenSettings();
             }
 
             ImGui_ImplDX11_NewFrame();
