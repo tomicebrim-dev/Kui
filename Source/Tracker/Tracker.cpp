@@ -99,7 +99,8 @@ namespace Kui::Tracker
         auto const* pStore = reinterpret_cast<Core::Store const*>( GetWindowLongPtrW( hWnd, GWLP_USERDATA ) );
 
         // Explorer restarted: the tray forgot every icon
-        if( msg == RegisterWindowMessageW( L"TaskbarCreated" ) )
+        static UINT const s_taskbarCreated = RegisterWindowMessageW( L"TaskbarCreated" );
+        if( msg == s_taskbarCreated )
         {
             AddTrayIcon( hWnd );
             return 0;

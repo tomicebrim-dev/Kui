@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <format>
+#include <thread>
 
 #include "Core/Layout.h"
 #include "Core/Text.h"
@@ -58,6 +59,7 @@ namespace Kui::UI
         std::ranges::stable_sort( m_entries, std::greater<>(), &Core::Entry::m_start );
 
         m_daySecs.clear();
+        m_longestEntry = 0;
         m_groups.clear();
         m_activities.clear();
         m_projects.clear();
@@ -72,6 +74,7 @@ namespace Kui::UI
             Core::Day const day = Core::DayOf( entry.m_start );
             int64_t const secs = entry.m_end - entry.m_start;
             m_daySecs[day] += secs;
+            m_longestEntry = std::max( m_longestEntry, secs );
             if( currentDay != day )
             {
                 currentDay = day;
@@ -177,6 +180,16 @@ namespace Kui::UI
         m_toast = Toast{ std::move( message ), ImGui::GetTime() };
     }
 
+    // Like std::async, but the future doesn't block on destruction: closing the window never waits on the network
+    template<typename F>
+    static auto RunDetached( F f )
+    {
+        std::packaged_task<std::invoke_result_t<F>()> task( std::move( f ) );
+        auto future = task.get_future();
+        std::thread( std::move( task ) ).detach();
+        return future;
+    }
+
     void App::CheckForUpdate()
     {
         if( m_updateCheck.valid() || m_updateInstall.valid() )
@@ -185,7 +198,7 @@ namespace Kui::UI
         }
 
         m_updateStatus = "Checking for updates…";
-        m_updateCheck = std::async( std::launch::async, &Updater::FetchLatest );
+        m_updateCheck = RunDetached( [] { return Updater::FetchLatest(); } );
     }
 
     void App::InstallUpdate()
@@ -196,7 +209,7 @@ namespace Kui::UI
         }
 
         m_updateStatus = std::format( "Downloading Kui {}…", m_update->m_version );
-        m_updateInstall = std::async( std::launch::async, &Updater::Install, *m_update );
+        m_updateInstall = RunDetached( [release = *m_update] { return Updater::Install( release ); } );
     }
 
     void App::PollUpdate()
@@ -279,7 +292,7 @@ namespace Kui::UI
             }
         };
 
-        for( Core::Entry const* pEntry : Core::Span( m_entries, from, to ) )
+        for( Core::Entry const* pEntry : Core::Span( m_entries, from, to, m_longestEntry ) )
         {
             add( pEntry->m_start, pEntry->m_end, pEntry->m_project );
         }

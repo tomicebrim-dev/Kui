@@ -111,45 +111,26 @@ namespace Kui::Platform
     }
 
     // Cached per exe path: the tracker and the UI both call in, and reading version info every second is wasteful
-    static std::wstring FileDescriptionOf( DWORD pid )
+    static std::wstring FileDescriptionOf( std::wstring const& ntPath )
     {
         static std::mutex s_lock;
         static std::unordered_map<std::wstring, std::wstring> s_cache;
 
-        std::optional<std::wstring> const path = ImagePathOf( pid );
-        if( !path )
-        {
-            return {};
-        }
-
         std::lock_guard guard( s_lock );
-        auto it = s_cache.find( *path );
+        auto it = s_cache.find( ntPath );
         if( it == s_cache.end() )
         {
-            it = s_cache.emplace( *path, ReadFileDescription( *path ) ).first;
+            it = s_cache.emplace( ntPath, ReadFileDescription( ntPath ) ).first;
         }
         return it->second;
     }
 
     // Program name: the exe's FileDescription, else its stem. Our own exe is always "kui" so it can be recognised.
-    static std::optional<WindowInfo> AppOf( HWND hWnd, std::unordered_map<DWORD, std::wstring> const& names )
+    static WindowInfo AppOf( std::wstring const& stem, std::optional<std::wstring> const& ntPath )
     {
-        DWORD pid = 0;
-        GetWindowThreadProcessId( hWnd, &pid );
-        auto const it = names.find( pid );
-        if( pid == 0 || it == names.end() )
-        {
-            return std::nullopt;
-        }
-
-        std::string stem = Core::Narrow( it->second );
-        if( Core::IEqualsAscii( stem, g_selfExe ) )
-        {
-            return WindowInfo { stem, {}, stem };
-        }
-
-        std::wstring const description = FileDescriptionOf( pid );
-        return WindowInfo { description.empty() ? stem : Core::Narrow( description ), {}, stem };
+        std::string const name = Core::Narrow( stem );
+        std::wstring const description = ntPath && !Core::IEqualsAscii( name, g_selfExe ) ? FileDescriptionOf( *ntPath ) : std::wstring();
+        return WindowInfo { description.empty() ? name : Core::Narrow( description ), {}, name };
     }
 
     static std::string TitleOf( HWND hWnd )
@@ -178,11 +159,19 @@ namespace Kui::Platform
             return TRUE;
         }
 
-        std::optional<WindowInfo> window = AppOf( hWnd, pContext->m_names );
-        if( window && !Core::IEqualsAscii( window->m_app, g_selfExe ) )
+        DWORD pid = 0;
+        GetWindowThreadProcessId( hWnd, &pid );
+        auto const it = pContext->m_names.find( pid );
+        if( pid == 0 || it == pContext->m_names.end() )
         {
-            window->m_title = TitleOf( hWnd );
-            pContext->m_windows.push_back( *window );
+            return TRUE;
+        }
+
+        WindowInfo window = AppOf( it->second, ImagePathOf( pid ) );
+        if( !Core::IEqualsAscii( window.m_app, g_selfExe ) )
+        {
+            window.m_title = TitleOf( hWnd );
+            pContext->m_windows.push_back( std::move( window ) );
         }
         return TRUE;
     }
@@ -197,13 +186,33 @@ namespace Kui::Platform
             return std::nullopt;
         }
 
-        std::optional<WindowInfo> window = AppOf( hWnd, ProcessNames() );
-        if( !window )
+        DWORD pid = 0;
+        GetWindowThreadProcessId( hWnd, &pid );
+        if( pid == 0 )
         {
             return std::nullopt;
         }
 
-        window->m_title = TitleOf( hWnd );
+        // Called every second: one query by pid, not a whole process snapshot. The snapshot only if the query fails.
+        std::optional<std::wstring> const ntPath = ImagePathOf( pid );
+        std::wstring stem;
+        if( ntPath )
+        {
+            stem = std::filesystem::path( *ntPath ).stem().wstring();
+        }
+        else
+        {
+            std::unordered_map<DWORD, std::wstring> const names = ProcessNames();
+            auto const it = names.find( pid );
+            if( it == names.end() )
+            {
+                return std::nullopt;
+            }
+            stem = it->second;
+        }
+
+        WindowInfo window = AppOf( stem, ntPath );
+        window.m_title = TitleOf( hWnd );
         return window;
     }
 

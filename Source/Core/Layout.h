@@ -12,9 +12,8 @@
 
 namespace Kui::Core
 {
-    // Entries overlapping [from, to). `entries` is newest-first, so this is two binary searches, not a full scan.
-    // ponytail: assumes no entry is longer than 24 h (true for app-switch tracking); widen the window if long manual entries matter.
-    std::vector<Entry const*> Span( std::vector<Entry> const& entries, int64_t from, int64_t to );
+    // Entries overlapping [from, to). `entries` is newest-first and `longest` is the longest entry's secs, so this is two binary searches, not a full scan.
+    std::vector<Entry const*> Span( std::vector<Entry> const& entries, int64_t from, int64_t to, int64_t longest );
 
     // Greedy lane packing. `spans` sorted by start; returns (lane, lanes in its overlap cluster) per span.
     std::vector<std::pair<size_t, size_t>> Lanes( std::vector<std::pair<int64_t, int64_t>> const& spans );

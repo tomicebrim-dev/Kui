@@ -48,7 +48,7 @@ add_library(kui_core STATIC
 target_include_directories(kui_core PUBLIC Source)
 target_compile_definitions(kui_core PUBLIC ${KUI_DEFS} PRIVATE KUI_VERSION="${PROJECT_VERSION}")
 target_compile_options(kui_core PRIVATE ${KUI_OPTS})
-target_link_libraries(kui_core PUBLIC nlohmann_json shell32 advapi32 dwmapi winhttp version)
+target_link_libraries(kui_core PUBLIC nlohmann_json shell32 advapi32 dwmapi winhttp version wintrust)
 
 # --- The app: one exe; --tracker runs the same exe as the tray tracker ---
 configure_file(Resources/Kui.rc.in ${PROJECT_BINARY_DIR}/Kui.rc @ONLY)

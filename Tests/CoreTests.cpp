@@ -97,9 +97,13 @@ namespace Kui::Tests
     static void Span()
     {
         std::vector<Core::Entry> const entries = { MakeEntry( 500000, 500100 ), MakeEntry( 200000, 200050 ), MakeEntry( 99990, 100010 ), MakeEntry( 10, 20 ) };
-        std::vector<Core::Entry const*> const found = Core::Span( entries, 100000, 300000 );
+        std::vector<Core::Entry const*> const found = Core::Span( entries, 100000, 300000, 100 );
         CHECK( found.size() == 2 && found[0]->m_start == 200000 && found[1]->m_start == 99990 );
-        CHECK( Core::Span( entries, 600000, 700000 ).empty() );
+        CHECK( Core::Span( entries, 600000, 700000, 100 ).empty() );
+
+        // A 3-day entry still shows on its last day
+        std::vector<Core::Entry> const long_ = { MakeEntry( 0, 3 * 86400 ) };
+        CHECK( Core::Span( long_, 2 * 86400, 3 * 86400, 3 * 86400 ).size() == 1 );
     }
 
     // Rename and delete through the real files, in a temp folder
@@ -173,6 +177,34 @@ namespace Kui::Tests
         CHECK( !Updater::IsNewer( "1.0.0-beta", "1.0.0" ) );
     }
 
+    // Unsigned and tampered files have no signer; an intact signed one does
+    static void Signer()
+    {
+        wchar_t self[MAX_PATH];
+        GetModuleFileNameW( nullptr, self, MAX_PATH );
+        CHECK( !Updater::SignerOf( self ).has_value() );
+
+        // ponytail: needs an embedded-signed exe that ships with Windows; skipped where Defender's stub is missing
+        std::filesystem::path const stub = L"C:\\Windows\\System32\\MpSigStub.exe";
+        if( !std::filesystem::exists( stub ) )
+        {
+            return;
+        }
+
+        std::filesystem::path const copy = std::filesystem::temp_directory_path() / std::format( "kui-signed-{}.exe", GetCurrentProcessId() );
+        std::filesystem::copy_file( stub, copy, std::filesystem::copy_options::overwrite_existing );
+        CHECK( Updater::SignerOf( copy.wstring() ) == Updater::SignerOf( stub.wstring() ) && Updater::SignerOf( copy.wstring() ).has_value() );
+        {
+            std::fstream file( copy, std::ios::in | std::ios::out | std::ios::binary );
+            file.seekg( 1024 );
+            char const byte = static_cast<char>( file.get() ^ 0xFF );
+            file.seekp( 1024 );
+            file.put( byte );
+        }
+        CHECK( !Updater::SignerOf( copy.wstring() ).has_value() );
+        std::filesystem::remove( copy );
+    }
+
     //-------------------------------------------------------------------------
 
     static void AntiCheatNames()
@@ -242,6 +274,7 @@ int main()
     Kui::Tests::Span();
     Kui::Tests::StoreRoundTrip();
     Kui::Tests::Versions();
+    Kui::Tests::Signer();
     Kui::Tests::AntiCheatNames();
     Kui::Tests::NoAntiCheatTriggers();
     std::printf( "All core tests passed\n" );

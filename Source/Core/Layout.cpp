@@ -7,10 +7,10 @@
 
 namespace Kui::Core
 {
-    std::vector<Entry const*> Span( std::vector<Entry> const& entries, int64_t from, int64_t to )
+    std::vector<Entry const*> Span( std::vector<Entry> const& entries, int64_t from, int64_t to, int64_t longest )
     {
         auto a = std::partition_point( entries.begin(), entries.end(), [&]( Entry const& e ) { return e.m_start >= to; } );
-        auto b = std::partition_point( entries.begin(), entries.end(), [&]( Entry const& e ) { return e.m_start >= from - 86400; } );
+        auto b = std::partition_point( entries.begin(), entries.end(), [&]( Entry const& e ) { return e.m_start >= from - longest; } );
         if( b < a )
         {
             b = a;

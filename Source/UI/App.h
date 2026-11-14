@@ -163,6 +163,7 @@ namespace Kui::UI
         Core::Settings                                      m_settings;
         std::optional<Core::Timer>                          m_timer;
         std::vector<Core::Entry>                            m_entries;      // Newest first
+        int64_t                                             m_longestEntry = 0; // Secs, for Core::Span
         std::optional<Core::Status>                         m_status;
         std::vector<std::string>                            m_recent;
         std::optional<std::filesystem::file_time_type>      m_entriesStamp;

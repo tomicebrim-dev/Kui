@@ -1,7 +1,9 @@
 #include "Updater/Updater.h"
 
 #include <windows.h>
+#include <softpub.h>
 #include <winhttp.h>
+#include <wintrust.h>
 
 #include <nlohmann/json.hpp>
 
@@ -12,6 +14,7 @@
 #include <memory>
 
 #include "Core/Text.h"
+#include "Platform/Platform.h"
 
 //-------------------------------------------------------------------------
 
@@ -135,6 +138,44 @@ namespace Kui::Updater
         return ParseVersion( a ) > ParseVersion( b );
     }
 
+    std::optional<std::vector<unsigned char>> SignerOf( std::wstring const& file )
+    {
+        WINTRUST_FILE_INFO fileInfo = { sizeof( fileInfo ) };
+        fileInfo.pcwszFilePath = file.c_str();
+
+        WINTRUST_DATA data = { sizeof( data ) };
+        data.dwUIChoice = WTD_UI_NONE;
+        data.fdwRevocationChecks = WTD_REVOKE_NONE;
+        data.dwUnionChoice = WTD_CHOICE_FILE;
+        data.pFile = &fileInfo;
+        data.dwStateAction = WTD_STATEACTION_VERIFY;
+        data.dwProvFlags = WTD_CACHE_ONLY_URL_RETRIEVAL;
+
+        GUID action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
+        LONG const result = WinVerifyTrust( nullptr, &action, &data );
+
+        // Untrusted root/chain is fine (self-signed): callers pin the cert itself. Bad digest or unsigned is not.
+        std::optional<std::vector<unsigned char>> signer;
+        CRYPT_PROVIDER_DATA const* pProvider = WTHelperProvDataFromStateData( data.hWVTStateData );
+        bool const isChainOnly = result == CERT_E_UNTRUSTEDROOT || result == CERT_E_CHAINING;
+        bool const isIntact = pProvider != nullptr && pProvider->cdwTrustStepErrors > TRUSTERROR_STEP_FINAL_SIGPROV
+            && pProvider->padwTrustStepErrors[TRUSTERROR_STEP_FINAL_OBJPROV] == ERROR_SUCCESS
+            && pProvider->padwTrustStepErrors[TRUSTERROR_STEP_FINAL_SIGPROV] == ERROR_SUCCESS;
+        if( result == ERROR_SUCCESS || ( isChainOnly && isIntact ) )
+        {
+            CRYPT_PROVIDER_SGNR const* pSigner = WTHelperGetProvSignerFromChain( const_cast<CRYPT_PROVIDER_DATA*>( pProvider ), 0, FALSE, 0 );
+            if( pSigner != nullptr && pSigner->csCertChain > 0 && pSigner->pasCertChain[0].pCert != nullptr )
+            {
+                CERT_CONTEXT const* pCert = pSigner->pasCertChain[0].pCert;
+                signer.emplace( pCert->pbCertEncoded, pCert->pbCertEncoded + pCert->cbCertEncoded );
+            }
+        }
+
+        data.dwStateAction = WTD_STATEACTION_CLOSE;
+        WinVerifyTrust( nullptr, &action, &data );
+        return signer;
+    }
+
     std::optional<Release> FetchLatest()
     {
         std::optional<std::string> const body = HttpGet( g_latestUrl );
@@ -201,6 +242,15 @@ namespace Kui::Updater
         file.close();
         if( !file )
         {
+            return false;
+        }
+
+        // Signed by the same cert as this exe, or no install: a hijacked release or download can't run code.
+        // ponytail: unsigned (dev) builds skip the check; make it mandatory once every release is signed.
+        if( std::optional<std::vector<unsigned char>> const mine = SignerOf( Platform::ExePath() ); mine && SignerOf( path.wstring() ) != mine )
+        {
+            std::error_code ec;
+            std::filesystem::remove( path, ec );
             return false;
         }
 
