@@ -2,8 +2,12 @@
 
 #include <dwmapi.h>
 #include <shellapi.h>
+#include <tlhelp32.h>
 
 #include <algorithm>
+#include <format>
+#include <mutex>
+#include <unordered_map>
 
 #include "Core/Text.h"
 
@@ -14,32 +18,138 @@ namespace Kui::Platform
     constexpr wchar_t g_runKey[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     constexpr wchar_t g_runValue[] = L"Kui";
 
-    // ponytail: program name is the .exe name; the original prefers the exe's FileDescription.
-    static std::optional<std::string> AppOf( HWND hWnd )
+    // Exe stem by pid, from one process snapshot.
+    // Anti-cheat safety: this never opens a handle to another process (no OpenProcess), so protected game processes see no access attempt from us.
+    // ponytail: one snapshot per call, cache if profiling says so.
+    static std::unordered_map<DWORD, std::wstring> ProcessNames()
+    {
+        std::unordered_map<DWORD, std::wstring> names;
+        HANDLE hSnapshot = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+        if( hSnapshot == INVALID_HANDLE_VALUE )
+        {
+            return names;
+        }
+
+        PROCESSENTRY32W entry { sizeof( PROCESSENTRY32W ) };
+        for( BOOL ok = Process32FirstW( hSnapshot, &entry ); ok; ok = Process32NextW( hSnapshot, &entry ) )
+        {
+            names[entry.th32ProcessID] = std::filesystem::path( entry.szExeFile ).stem().wstring();
+        }
+
+        CloseHandle( hSnapshot );
+        return names;
+    }
+
+    // Full NT path of a pid's exe ("\Device\HarddiskVolumeN\..."), from a kernel query by pid.
+    // Same data Task Manager and the process snapshot use: no handle to the process is opened.
+    static std::optional<std::wstring> ImagePathOf( DWORD pid )
+    {
+        using QueryFn = LONG( NTAPI* )( ULONG, PVOID, ULONG, PULONG );
+        static QueryFn const pQuery = reinterpret_cast<QueryFn>( reinterpret_cast<void*>( GetProcAddress( GetModuleHandleW( L"ntdll.dll" ), "NtQuerySystemInformation" ) ) );
+        if( pQuery == nullptr )
+        {
+            return std::nullopt;
+        }
+
+        // SystemProcessIdInformation: { pid, UNICODE_STRING image name }
+        constexpr ULONG systemProcessIdInformation = 88;
+        struct ProcessIdInfo
+        {
+            HANDLE      m_pid;
+            USHORT      m_length;
+            USHORT      m_maxLength;
+            PWSTR       m_pBuffer;
+        };
+
+        wchar_t buffer[1024];
+        ProcessIdInfo info { reinterpret_cast<HANDLE>( static_cast<ULONG_PTR>( pid ) ), 0, sizeof( buffer ), buffer };
+        if( pQuery( systemProcessIdInformation, &info, sizeof( info ), nullptr ) < 0 || info.m_length == 0 )
+        {
+            return std::nullopt;
+        }
+
+        return std::wstring( buffer, info.m_length / sizeof( wchar_t ) );
+    }
+
+    // The exe's FileDescription ("Google Chrome"), empty if it has none. Reads the exe file, not the process.
+    static std::wstring ReadFileDescription( std::wstring const& ntPath )
+    {
+        std::wstring const file = L"\\\\?\\GLOBALROOT" + ntPath;
+        DWORD handle = 0;
+        DWORD const size = GetFileVersionInfoSizeW( file.c_str(), &handle );
+        if( size == 0 )
+        {
+            return {};
+        }
+
+        std::vector<char> data( size );
+        if( !GetFileVersionInfoW( file.c_str(), 0, size, data.data() ) )
+        {
+            return {};
+        }
+
+        struct Translation
+        {
+            WORD    m_language;
+            WORD    m_codepage;
+        };
+
+        Translation const* pTranslation = nullptr;
+        UINT length = 0;
+        if( !VerQueryValueW( data.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>( const_cast<Translation**>( &pTranslation ) ), &length ) || length < sizeof( Translation ) )
+        {
+            return {};
+        }
+
+        std::wstring const key = std::format( L"\\StringFileInfo\\{:04x}{:04x}\\FileDescription", pTranslation->m_language, pTranslation->m_codepage );
+        wchar_t* pValue = nullptr;
+        if( !VerQueryValueW( data.data(), key.c_str(), reinterpret_cast<void**>( &pValue ), &length ) || pValue == nullptr )
+        {
+            return {};
+        }
+        return std::wstring( pValue );
+    }
+
+    // Cached per exe path: the tracker and the UI both call in, and reading version info every second is wasteful
+    static std::wstring FileDescriptionOf( DWORD pid )
+    {
+        static std::mutex s_lock;
+        static std::unordered_map<std::wstring, std::wstring> s_cache;
+
+        std::optional<std::wstring> const path = ImagePathOf( pid );
+        if( !path )
+        {
+            return {};
+        }
+
+        std::lock_guard guard( s_lock );
+        auto it = s_cache.find( *path );
+        if( it == s_cache.end() )
+        {
+            it = s_cache.emplace( *path, ReadFileDescription( *path ) ).first;
+        }
+        return it->second;
+    }
+
+    // Program name: the exe's FileDescription, else its stem. Our own exe is always "kui" so it can be recognised.
+    static std::optional<WindowInfo> AppOf( HWND hWnd, std::unordered_map<DWORD, std::wstring> const& names )
     {
         DWORD pid = 0;
         GetWindowThreadProcessId( hWnd, &pid );
-        if( pid == 0 )
+        auto const it = names.find( pid );
+        if( pid == 0 || it == names.end() )
         {
             return std::nullopt;
         }
 
-        HANDLE hProcess = OpenProcess( PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid );
-        if( hProcess == nullptr )
+        std::string stem = Core::Narrow( it->second );
+        if( Core::IEqualsAscii( stem, g_selfExe ) )
         {
-            return std::nullopt;
+            return WindowInfo { stem, {}, stem };
         }
 
-        wchar_t buffer[1024];
-        DWORD length = static_cast<DWORD>( std::size( buffer ) );
-        BOOL const ok = QueryFullProcessImageNameW( hProcess, 0, buffer, &length );
-        CloseHandle( hProcess );
-        if( !ok )
-        {
-            return std::nullopt;
-        }
-
-        return Core::Narrow( std::filesystem::path( std::wstring( buffer, length ) ).stem().wstring() );
+        std::wstring const description = FileDescriptionOf( pid );
+        return WindowInfo { description.empty() ? stem : Core::Narrow( description ), {}, stem };
     }
 
     static std::string TitleOf( HWND hWnd )
@@ -49,9 +159,15 @@ namespace Kui::Platform
         return Core::Narrow( std::wstring_view( buffer, std::max( length, 0 ) ) );
     }
 
+    struct CollectContext
+    {
+        std::unordered_map<DWORD, std::wstring>     m_names;
+        std::vector<WindowInfo>                     m_windows;
+    };
+
     static BOOL CALLBACK CollectWindow( HWND hWnd, LPARAM lParam )
     {
-        auto* pOut = reinterpret_cast<std::vector<WindowInfo>*>( lParam );
+        auto* pContext = reinterpret_cast<CollectContext*>( lParam );
 
         // Cloaked: hidden UWP shells and other virtual-desktop ghosts
         DWORD cloaked = 0;
@@ -62,10 +178,11 @@ namespace Kui::Platform
             return TRUE;
         }
 
-        std::optional<std::string> app = AppOf( hWnd );
-        if( app && !Core::IEqualsAscii( *app, g_selfExe ) )
+        std::optional<WindowInfo> window = AppOf( hWnd, pContext->m_names );
+        if( window && !Core::IEqualsAscii( window->m_app, g_selfExe ) )
         {
-            pOut->push_back( { *app, TitleOf( hWnd ) } );
+            window->m_title = TitleOf( hWnd );
+            pContext->m_windows.push_back( *window );
         }
         return TRUE;
     }
@@ -80,19 +197,46 @@ namespace Kui::Platform
             return std::nullopt;
         }
 
-        std::optional<std::string> app = AppOf( hWnd );
-        if( !app )
+        std::optional<WindowInfo> window = AppOf( hWnd, ProcessNames() );
+        if( !window )
         {
             return std::nullopt;
         }
-        return WindowInfo { *app, TitleOf( hWnd ) };
+
+        window->m_title = TitleOf( hWnd );
+        return window;
+    }
+
+    bool IsAntiCheatName( std::string const& app )
+    {
+        // ponytail: hand-kept list of common services/clients; add names as games turn up
+        static char const* const names[] =
+        {
+            "easyanticheat", "easyanticheat_eos", "beservice", "beservice_x64", "vgc", "vgtray",
+            "faceitclient", "faceit", "eseaclient", "gamemon", "xhunter1",
+        };
+
+        std::string const lower = Core::ToLower( app );
+        return std::any_of( std::begin( names ), std::end( names ), [&]( char const* pName ) { return lower == pName; } );
+    }
+
+    bool AntiCheatActive()
+    {
+        for( auto const& [pid, name] : ProcessNames() )
+        {
+            if( IsAntiCheatName( Core::Narrow( name ) ) )
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     std::vector<WindowInfo> OpenWindows()
     {
-        std::vector<WindowInfo> windows;
-        EnumWindows( CollectWindow, reinterpret_cast<LPARAM>( &windows ) );
-        return windows;
+        CollectContext context { ProcessNames(), {} };
+        EnumWindows( CollectWindow, reinterpret_cast<LPARAM>( &context ) );
+        return context.m_windows;
     }
 
     std::vector<std::string> OpenPrograms()

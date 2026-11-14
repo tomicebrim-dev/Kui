@@ -10,6 +10,9 @@
 
 //-------------------------------------------------------------------------
 // Thin Win32 wrappers: windows in front, idle time, the Run key, registry reads and process launch.
+//
+// Anti-cheat safety: Kui may run beside protected games, so it never touches another process. No process handles, no memory access,
+// no hooks, no injection, no input sniffing. Window titles, a process-name snapshot and a by-pid image-path query (NtQuerySystemInformation, no handle). Tests/AntiCheatTests.cpp enforces this on Source/.
 //-------------------------------------------------------------------------
 
 namespace Kui::Platform
@@ -24,8 +27,12 @@ namespace Kui::Platform
 
     struct WindowInfo
     {
-        std::string     m_app;      // Exe name without extension
+        std::string     m_app;      // FileDescription of the exe, else its name without extension
         std::string     m_title;
+        std::string     m_exe;      // Exe name without extension, so rules written against it keep matching
+
+        // What rules match against: the program name, plus the exe name when it differs
+        std::string MatchApp() const { return m_exe.empty() || m_exe == m_app ? m_app : m_app + " " + m_exe; }
     };
 
     //-------------------------------------------------------------------------
@@ -38,6 +45,12 @@ namespace Kui::Platform
 
     // Distinct programs of OpenWindows(), sorted case-insensitively
     std::vector<std::string> OpenPrograms();
+
+    // Is this exe stem (no extension, any case) a known anti-cheat service or client?
+    bool IsAntiCheatName( std::string const& app );
+
+    // Is any known anti-cheat process running? Uses a process-name snapshot only.
+    bool AntiCheatActive();
 
     // Seconds since the last keyboard or mouse input
     int64_t IdleSecs();

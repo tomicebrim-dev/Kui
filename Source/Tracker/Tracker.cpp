@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <shellapi.h>
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -15,8 +16,12 @@
 namespace Kui::Tracker
 {
     constexpr UINT g_trayMessage = WM_APP + 1;
+    constexpr UINT g_safeModeMessage = WM_APP + 2; // Poll thread -> tray window: the safe-mode state changed
     constexpr UINT g_menuOpen = 1;
     constexpr UINT g_menuExit = 2;
+
+    // Set by the poll thread, read by the tray window for its tooltip
+    static std::atomic<bool> g_safeMode = false;
 
     // A focus wait: the rule that matched and when it first did
     struct Pending
@@ -42,8 +47,17 @@ namespace Kui::Tracker
         data.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         data.uCallbackMessage = g_trayMessage;
         data.hIcon = static_cast<HICON>( LoadImageW( GetModuleHandleW( nullptr ), MAKEINTRESOURCEW( 1 ), IMAGE_ICON, GetSystemMetrics( SM_CXSMICON ), GetSystemMetrics( SM_CYSMICON ), 0 ) );
-        wcscpy_s( data.szTip, L"Kui" );
+        wcscpy_s( data.szTip, g_safeMode ? L"Kui - anti-cheat detected: light scan" : L"Kui" );
         Shell_NotifyIconW( NIM_ADD, &data );
+    }
+
+    static void UpdateTrayTip( HWND hWnd )
+    {
+        NOTIFYICONDATAW data { sizeof( data ) };
+        data.hWnd = hWnd;
+        data.uFlags = NIF_TIP;
+        wcscpy_s( data.szTip, g_safeMode ? L"Kui - anti-cheat detected: light scan" : L"Kui" );
+        Shell_NotifyIconW( NIM_MODIFY, &data );
     }
 
     static void RemoveTrayIcon( HWND hWnd )
@@ -98,6 +112,12 @@ namespace Kui::Tracker
             }
             return 0;
 
+            case g_safeModeMessage:
+            {
+                UpdateTrayTip( hWnd );
+            }
+            return 0;
+
             case g_trayMessage:
             {
                 if( lParam == WM_LBUTTONUP )
@@ -149,6 +169,8 @@ namespace Kui::Tracker
         std::vector<std::string> recent = store.LoadRecent();
         int64_t lastBeat = 0;
         int64_t lastScan = 0;
+        int64_t lastAntiCheatCheck = 0;
+        bool antiCheat = false; // Safe mode: a game's anti-cheat is running, so skip the all-window scan
 
         while( true )
         {
@@ -163,6 +185,18 @@ namespace Kui::Tracker
                 lastSeen.reset(); // Re-check the window against the new rules
             }
 
+            if( t - lastAntiCheatCheck >= 5 )
+            {
+                lastAntiCheatCheck = t;
+                bool const wasAntiCheat = antiCheat;
+                antiCheat = Platform::AntiCheatActive();
+                if( antiCheat != wasAntiCheat )
+                {
+                    g_safeMode = antiCheat;
+                    PostMessageW( FindWindowW( L"KuiTracker", nullptr ), g_safeModeMessage, 0, 0 );
+                }
+            }
+
             Platform::WindowInfo const window = Platform::ActiveWindow().value_or( Platform::WindowInfo {} );
             bool const isSelf = Core::IEqualsAscii( window.m_app, Platform::g_selfExe );
             if( !isSelf && Core::Store::BumpRecent( recent, window.m_app ) )
@@ -172,7 +206,7 @@ namespace Kui::Tracker
 
             if( t - lastBeat >= g_heartbeatSecs )
             {
-                store.SaveStatus( { t, window.m_app, window.m_title } );
+                store.SaveStatus( { t, window.m_app, window.m_title, antiCheat } );
                 lastBeat = t;
             }
 
@@ -200,12 +234,12 @@ namespace Kui::Tracker
             std::optional<uint64_t> runningRule = timer ? timer->m_rule : std::nullopt;
 
             // The tracked program was closed: end its timer, whatever "stop on no match" says.
-            // ponytail: window scan every 5 s (EnumWindows + OpenProcess per window is the tracker's priciest call); end time can be up to 5 s late.
+            // ponytail: window scan every 5 s (EnumWindows + a process snapshot is the tracker's priciest call); end time can be up to 5 s late.
             if( runningRule )
             {
                 auto const rule = std::find_if( settings.m_rules.begin(), settings.m_rules.end(), [&]( Core::Rule const& r ) { return r.m_id == *runningRule; } );
-                auto isOpen = [&]( Platform::WindowInfo const& w ) { return rule->Matches( Core::ToLower( w.m_app + " " + w.m_title ) ); };
-                if( rule != settings.m_rules.end() && !isOpen( window ) && t - lastScan >= 5 )
+                auto isOpen = [&]( Platform::WindowInfo const& w ) { return rule->Matches( Core::ToLower( w.MatchApp() + " " + w.m_title ) ); };
+                if( rule != settings.m_rules.end() && !isOpen( window ) && !antiCheat && t - lastScan >= 5 )
                 {
                     lastScan = t;
                     std::vector<Platform::WindowInfo> const windows = Platform::OpenWindows();
@@ -231,7 +265,7 @@ namespace Kui::Tracker
                 continue;
             }
 
-            Core::Rule const* pRule = Core::FindRule( settings.m_rules, window.m_app, window.m_title );
+            Core::Rule const* pRule = Core::FindRule( settings.m_rules, window.MatchApp(), window.m_title );
             if( pRule == nullptr )
             {
                 pending.reset();

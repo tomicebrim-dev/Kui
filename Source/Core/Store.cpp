@@ -399,6 +399,7 @@ namespace Kui::Core
         Get( *j, "heartbeat", s.m_heartbeat );
         Get( *j, "app", s.m_app );
         Get( *j, "title", s.m_title );
+        Get( *j, "safeMode", s.m_safeMode );
         return s;
     }
 
@@ -408,6 +409,7 @@ namespace Kui::Core
         j["heartbeat"] = s.m_heartbeat;
         j["app"] = s.m_app;
         j["title"] = s.m_title;
+        j["safeMode"] = s.m_safeMode;
         WriteAtomic( File( "tracker.json" ), j.dump( 2 ) );
     }
 

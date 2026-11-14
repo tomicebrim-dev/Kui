@@ -90,6 +90,7 @@ namespace Kui::Core
         int64_t         m_heartbeat = 0;
         std::string     m_app;
         std::string     m_title;
+        bool            m_safeMode = false; // An anti-cheat is running, so the tracker is scanning lightly
     };
 
     // Main window position and size, restored on the next start

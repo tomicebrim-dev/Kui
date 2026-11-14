@@ -197,6 +197,12 @@ namespace Kui::UI
             Label( Ellipsize( "In front: " + m_status->m_app, ImGui::GetContentRegionAvail().x, 12.5f ), 12.5f, g_muted );
         }
 
+        if( alive && m_status.has_value() && m_status->m_safeMode )
+        {
+            Label( "Anti-cheat detected: light scan", 12.5f, g_muted );
+            ImGui::SetItemTooltip( "Kui only reads the window in front while an anti-cheat is running" );
+        }
+
         ImGui::PopStyleVar();
         EndCard();
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(Kui VERSION 1.1.2 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
+project(Kui VERSION 1.2.3 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
 
 if(NOT WIN32)
   message(FATAL_ERROR "Kui is Windows-only (Win32 + Direct3D 11).")
@@ -48,7 +48,7 @@ add_library(kui_core STATIC
 target_include_directories(kui_core PUBLIC Source)
 target_compile_definitions(kui_core PUBLIC ${KUI_DEFS} PRIVATE KUI_VERSION="${PROJECT_VERSION}")
 target_compile_options(kui_core PRIVATE ${KUI_OPTS})
-target_link_libraries(kui_core PUBLIC nlohmann_json shell32 advapi32 dwmapi winhttp)
+target_link_libraries(kui_core PUBLIC nlohmann_json shell32 advapi32 dwmapi winhttp version)
 
 # --- The app: one exe; --tracker runs the same exe as the tray tracker ---
 configure_file(Resources/Kui.rc.in ${PROJECT_BINARY_DIR}/Kui.rc @ONLY)
@@ -88,6 +88,7 @@ if(KUI_BUILD_TESTS)
   enable_testing()
   add_executable(kui_tests Tests/CoreTests.cpp)
   target_compile_options(kui_tests PRIVATE ${KUI_OPTS})
+  target_compile_definitions(kui_tests PRIVATE KUI_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   target_link_libraries(kui_tests PRIVATE kui_core)
   add_test(NAME core COMMAND kui_tests)
 endif()

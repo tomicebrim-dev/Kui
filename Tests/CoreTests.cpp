@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "Core/Layout.h"
 #include "Core/Store.h"
 #include "Core/TimeUtil.h"
+#include "Platform/Platform.h"
 #include "Setup/SetupDetection.h"
 #include "Updater/Updater.h"
 
@@ -157,6 +159,65 @@ namespace Kui::Tests
         CHECK( !Updater::IsNewer( "v1.0.0", "1.0.0" ) );
         CHECK( !Updater::IsNewer( "1.0.0-beta", "1.0.0" ) );
     }
+
+    //-------------------------------------------------------------------------
+
+    static void AntiCheatNames()
+    {
+        CHECK( Platform::IsAntiCheatName( "EasyAntiCheat" ) );
+        CHECK( Platform::IsAntiCheatName( "BEService" ) );
+        CHECK( Platform::IsAntiCheatName( "vgc" ) );
+        CHECK( !Platform::IsAntiCheatName( "chrome" ) );
+        CHECK( !Platform::IsAntiCheatName( "" ) );
+    }
+
+    //-------------------------------------------------------------------------
+
+    // Anti-cheat safety: Kui runs beside protected games, so Source/ must never touch another process.
+    // These are what anti-cheats flag: handles into other processes, memory access, injection, hooks, input sniffing, debug privileges.
+    // ponytail: text scan, drops everything after "//" on a line; a call hidden behind a macro or GetProcAddress slips through.
+    static void NoAntiCheatTriggers()
+    {
+        static char const* const forbidden[] =
+        {
+            "OpenProcess", "NtOpenProcess", "DuplicateHandle", "NtQueryInformationProcess",
+            "ReadProcessMemory", "WriteProcessMemory", "VirtualAllocEx", "VirtualProtectEx", "VirtualQueryEx", "CreateRemoteThread",
+            "SetThreadContext", "SuspendThread", "DebugActiveProcess", "SeDebugPrivilege", "AdjustTokenPrivileges",
+            "TH32CS_SNAPMODULE", "TH32CS_SNAPTHREAD", "TH32CS_SNAPHEAPLIST", "Module32", "Thread32", "Heap32", "EnumProcessModules",
+            "SetWindowsHookEx", "SetWinEventHook", "GetAsyncKeyState", "GetKeyboardState", "RegisterRawInputDevices", "GetRawInputData",
+            "SendInput", "keybd_event", "mouse_event",
+        };
+
+        std::filesystem::path const root = std::filesystem::path( KUI_SOURCE_DIR ) / "Source";
+        CHECK( std::filesystem::exists( root ) );
+
+        int files = 0;
+        for( auto const& entry : std::filesystem::recursive_directory_iterator( root ) )
+        {
+            std::string const ext = entry.path().extension().string();
+            if( !entry.is_regular_file() || ( ext != ".cpp" && ext != ".h" ) )
+            {
+                continue;
+            }
+
+            files++;
+            std::ifstream in( entry.path() );
+            std::string line;
+            for( int n = 1; std::getline( in, line ); n++ )
+            {
+                line = line.substr( 0, line.find( "//" ) );
+                for( char const* pName : forbidden )
+                {
+                    if( line.find( pName ) != std::string::npos )
+                    {
+                        std::printf( "Anti-cheat risk: %s uses %s (line %d)\n", entry.path().string().c_str(), pName, n );
+                        CHECK( false );
+                    }
+                }
+            }
+        }
+        CHECK( files > 10 ); // The scan actually found the sources
+    }
 }
 
 int main()
@@ -168,6 +229,8 @@ int main()
     Kui::Tests::Span();
     Kui::Tests::StoreRoundTrip();
     Kui::Tests::Versions();
+    Kui::Tests::AntiCheatNames();
+    Kui::Tests::NoAntiCheatTriggers();
     std::printf( "All core tests passed\n" );
     return 0;
 }
