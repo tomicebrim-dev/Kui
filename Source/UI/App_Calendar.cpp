@@ -74,9 +74,9 @@ namespace Kui::UI
         }
 
         ImGui::SameLine( 0, Px( 12 ) );
-        Label( label, 16.0f, g_text, true );
+        RowLabel( label, 16.0f, g_text, true );
         ImGui::SameLine();
-        Label( std::format( "W{}", Core::IsoWeek( monday ) ), g_bodySize, g_muted );
+        RowLabel( std::format( "W{}", Core::IsoWeek( monday ) ), g_bodySize, g_muted );
 
         if( m_week != 0 )
         {

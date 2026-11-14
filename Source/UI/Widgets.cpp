@@ -3,6 +3,9 @@
 #include <imgui_stdlib.h>
 
 #include <cfloat>
+#include <cmath>
+
+#include "Core/Text.h"
 
 //-------------------------------------------------------------------------
 
@@ -22,6 +25,17 @@ namespace Kui::UI
         ImGui::TextUnformatted( text.data(), text.data() + text.size() );
         ImGui::PopStyleColor();
         ImGui::PopFont();
+    }
+
+    void RowLabel( std::string_view text, float size, ImU32 color, bool semibold )
+    {
+        ImVec2 const pos = ImGui::GetCursorScreenPos();
+        float const baseline = pos.y + ImGui::GetStyle().FramePadding.y + ImGui::GetFontBaked()->Ascent;
+        ImFont* const pFont = FontFor( semibold );
+        float const px = FontPx( size );
+        ImVec2 const topLeft( pos.x, baseline - pFont->GetFontBaked( px )->Ascent );
+        ImGui::GetWindowDrawList()->AddText( pFont, px, topLeft, color, text.data(), text.data() + text.size() );
+        ImGui::Dummy( ImVec2( TextWidth( text, size, semibold ), ImGui::GetFrameHeight() ) );
     }
 
     void Caption( std::string_view text )
@@ -124,35 +138,7 @@ namespace Kui::UI
         return clicked;
     }
 
-    bool NavItem( char const* pLabel, char const* pShortcut, bool active )
-    {
-        ImVec2 const pos = ImGui::GetCursorScreenPos();
-        ImVec2 const size( ImGui::GetContentRegionAvail().x, Px( 36 ) );
-        bool const clicked = ImGui::InvisibleButton( pLabel, size );
-        bool const hovered = ImGui::IsItemHovered();
-
-        ImDrawList* pDrawList = ImGui::GetWindowDrawList();
-        ImVec2 const max( pos.x + size.x, pos.y + size.y );
-        float const centerY = pos.y + size.y / 2;
-        if( active || hovered )
-        {
-            pDrawList->AddRectFilled( pos, max, active ? g_accentDark : g_card, Px( 8 ) );
-        }
-
-        if( active )
-        {
-            pDrawList->AddRectFilled( ImVec2( pos.x, pos.y + Px( 9 ) ), ImVec2( pos.x + Px( 3 ), pos.y + Px( 27 ) ), g_accent, Px( 2 ) );
-        }
-
-        TextAt( pDrawList, ImVec2( pos.x + Px( 16 ), centerY ), pLabel, 15.0f, active ? g_text : g_muted, active );
-        if( hovered )
-        {
-            TextAt( pDrawList, ImVec2( max.x - Px( 12 ), centerY ), pShortcut, 11.5f, g_muted, false, 1.0f );
-        }
-        return clicked;
-    }
-
-    bool ProjectField( char const* pId, std::string& text, float width, std::vector<std::string> const& projects )
+    bool ProjectField( char const* pId, std::string& text, float width, std::vector<std::string> const& projects, std::map<std::string, uint32_t>* pColors )
     {
         ImGui::PushID( pId );
         bool changed = false;
@@ -161,9 +147,63 @@ namespace Kui::UI
         ImVec2 const max( pos.x + size.x, pos.y + size.y );
         float const centerY = pos.y + size.y / 2;
         ImDrawList* pDrawList = ImGui::GetWindowDrawList();
-        pDrawList->AddRectFilled( pos, max, g_bar, Px( 8 ) );
+        pDrawList->AddRectFilled( pos, max, g_field, Px( 8 ) );
         pDrawList->AddRect( pos, max, g_line, Px( 8 ) );
         pDrawList->AddCircleFilled( ImVec2( pos.x + Px( 15 ), centerY ), Px( 4.5f ), ColorFor( text ) );
+
+        // The dot picks the project's color
+        std::string const project( Core::Trim( text ) );
+        if( pColors != nullptr && !project.empty() )
+        {
+            ImGui::SetCursorScreenPos( ImVec2( pos.x + Px( 5 ), pos.y ) );
+            if( ImGui::InvisibleButton( "##color", ImVec2( Px( 20 ), size.y ) ) )
+            {
+                ImGui::OpenPopup( "color" );
+            }
+            ImGui::SetItemTooltip( "Change the project's color" );
+            if( ImGui::IsItemHovered() )
+            {
+                pDrawList->AddCircle( ImVec2( pos.x + Px( 15 ), centerY ), Px( 7 ), g_muted, 0, Px( 1.2f ) );
+            }
+
+            ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( Px( 10 ), Px( 10 ) ) );
+            if( ImGui::BeginPopup( "color" ) )
+            {
+                for( size_t i = 0; i < std::size( g_palette ); i++ )
+                {
+                    ImGui::PushID( static_cast<int>( i ) );
+                    if( i > 0 )
+                    {
+                        ImGui::SameLine();
+                    }
+
+                    if( ImGui::ColorButton( "##swatch", ImGui::ColorConvertU32ToFloat4( g_palette[i] ), ImGuiColorEditFlags_NoTooltip, ImVec2( Px( 22 ), Px( 22 ) ) ) )
+                    {
+                        ( *pColors )[project] = g_palette[i];
+                        changed = true;
+                    }
+                    ImGui::PopID();
+                }
+
+                ImVec4 color = ImGui::ColorConvertU32ToFloat4( ColorFor( project ) );
+                ImGui::SetNextItemWidth( Px( 230 ) );
+                if( ImGui::ColorPicker3( "##picker", &color.x, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoInputs ) )
+                {
+                    ( *pColors )[project] = ImGui::ColorConvertFloat4ToU32( color );
+                    changed = true;
+                }
+
+                ImGui::BeginDisabled( !pColors->contains( project ) );
+                if( ImGui::Button( "Reset to default" ) )
+                {
+                    pColors->erase( project );
+                    changed = true;
+                }
+                ImGui::EndDisabled();
+                ImGui::EndPopup();
+            }
+            ImGui::PopStyleVar();
+        }
 
         // Frameless text box between the dot and the arrow
         ImGui::PushStyleColor( ImGuiCol_FrameBg, IM_COL32( 0, 0, 0, 0 ) );
@@ -245,6 +285,89 @@ namespace Kui::UI
         return clicked;
     }
 
+    // Paints an icon centered on c, about 16px wide
+    static void DrawIcon( ImDrawList* pDrawList, Icon icon, ImVec2 c, ImU32 color )
+    {
+        switch( icon )
+        {
+            case Icon::Play:
+            {
+                pDrawList->AddTriangleFilled( ImVec2( c.x - Px( 3.5f ), c.y - Px( 5.5f ) ), ImVec2( c.x + Px( 5.5f ), c.y ), ImVec2( c.x - Px( 3.5f ), c.y + Px( 5.5f ) ), color );
+            }
+            break;
+
+            case Icon::Delete:
+            {
+                float const r = Px( 4.5f );
+                pDrawList->AddLine( ImVec2( c.x - r, c.y - r ), ImVec2( c.x + r, c.y + r ), color, Px( 1.6f ) );
+                pDrawList->AddLine( ImVec2( c.x + r, c.y - r ), ImVec2( c.x - r, c.y + r ), color, Px( 1.6f ) );
+            }
+            break;
+
+            case Icon::Timer:
+            {
+                // Stopwatch: face, hand and crown
+                ImVec2 const face( c.x, c.y + Px( 1.5f ) );
+                pDrawList->AddCircle( face, Px( 7.5f ), color, 0, Px( 1.6f ) );
+                pDrawList->AddLine( face, ImVec2( face.x, face.y - Px( 4 ) ), color, Px( 1.6f ) );
+                pDrawList->AddLine( ImVec2( c.x - Px( 2.5f ), c.y - Px( 8.5f ) ), ImVec2( c.x + Px( 2.5f ), c.y - Px( 8.5f ) ), color, Px( 1.6f ) );
+            }
+            break;
+
+            case Icon::Calendar:
+            {
+                // Page with a header line and two rings
+                ImVec2 const min( c.x - Px( 8 ), c.y - Px( 6.5f ) );
+                ImVec2 const max( c.x + Px( 8 ), c.y + Px( 8 ) );
+                pDrawList->AddRect( min, max, color, Px( 2.5f ), 0, Px( 1.6f ) );
+                pDrawList->AddLine( ImVec2( min.x, c.y - Px( 2 ) ), ImVec2( max.x, c.y - Px( 2 ) ), color, Px( 1.6f ) );
+                pDrawList->AddLine( ImVec2( c.x - Px( 4 ), c.y - Px( 9 ) ), ImVec2( c.x - Px( 4 ), c.y - Px( 5 ) ), color, Px( 1.6f ) );
+                pDrawList->AddLine( ImVec2( c.x + Px( 4 ), c.y - Px( 9 ) ), ImVec2( c.x + Px( 4 ), c.y - Px( 5 ) ), color, Px( 1.6f ) );
+            }
+            break;
+
+            case Icon::Reports:
+            {
+                // Three bars on a baseline
+                float const base = c.y + Px( 8 );
+                float const heights[] = { 7.0f, 15.0f, 11.0f };
+                for( int i = 0; i < 3; i++ )
+                {
+                    float const x = c.x + Px( static_cast<float>( i - 1 ) * 5.5f );
+                    pDrawList->AddRectFilled( ImVec2( x - Px( 1.75f ), base - Px( heights[i] ) ), ImVec2( x + Px( 1.75f ), base ), color, Px( 1 ) );
+                }
+            }
+            break;
+
+            case Icon::Programs:
+            {
+                // 2x2 app grid
+                float const cell = Px( 6.5f );
+                float const gap = Px( 2.5f );
+                for( int i = 0; i < 4; i++ )
+                {
+                    float const x = c.x + ( i % 2 == 0 ? -cell - gap / 2 : gap / 2 );
+                    float const y = c.y + ( i < 2 ? -cell - gap / 2 : gap / 2 );
+                    pDrawList->AddRect( ImVec2( x, y ), ImVec2( x + cell, y + cell ), color, Px( 2 ), 0, Px( 1.6f ) );
+                }
+            }
+            break;
+
+            case Icon::Settings:
+            {
+                // Gear: 8 teeth around a ring
+                for( int i = 0; i < 8; i++ )
+                {
+                    float const angle = static_cast<float>( i ) * 0.785398f;  // 45 degrees
+                    ImVec2 const dir( std::cos( angle ), std::sin( angle ) );
+                    pDrawList->AddLine( ImVec2( c.x + dir.x * Px( 5 ), c.y + dir.y * Px( 5 ) ), ImVec2( c.x + dir.x * Px( 8.5f ), c.y + dir.y * Px( 8.5f ) ), color, Px( 3 ) );
+                }
+                pDrawList->AddCircle( c, Px( 5.5f ), color, 0, Px( 2.2f ) );
+            }
+            break;
+        }
+    }
+
     bool IconButton( char const* pId, Icon icon, char const* pTooltip )
     {
         ImVec2 const pos = ImGui::GetCursorScreenPos();
@@ -265,23 +388,24 @@ namespace Kui::UI
             pDrawList->AddCircleFilled( c, Px( 13 ), g_line );
         }
 
-        switch( icon )
-        {
-            case Icon::Play:
-            {
-                pDrawList->AddTriangleFilled( ImVec2( c.x - Px( 3.5f ), c.y - Px( 5.5f ) ), ImVec2( c.x + Px( 5.5f ), c.y ), ImVec2( c.x - Px( 3.5f ), c.y + Px( 5.5f ) ), color );
-            }
-            break;
+        DrawIcon( pDrawList, icon, c, color );
+        ImGui::SetItemTooltip( "%s", pTooltip );
+        return clicked;
+    }
 
-            case Icon::Delete:
-            {
-                float const r = Px( 4.5f );
-                pDrawList->AddLine( ImVec2( c.x - r, c.y - r ), ImVec2( c.x + r, c.y + r ), color, Px( 1.6f ) );
-                pDrawList->AddLine( ImVec2( c.x + r, c.y - r ), ImVec2( c.x - r, c.y + r ), color, Px( 1.6f ) );
-            }
-            break;
+    bool RailItem( char const* pId, Icon icon, char const* pTooltip, bool active )
+    {
+        ImVec2 const pos = ImGui::GetCursorScreenPos();
+        float const size = Px( 40 );
+        bool const clicked = ImGui::InvisibleButton( pId, ImVec2( size, size ) );
+        bool const hovered = ImGui::IsItemHovered();
+        ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+        if( active || hovered )
+        {
+            pDrawList->AddRectFilled( pos, ImVec2( pos.x + size, pos.y + size ), active ? g_accentDark : g_card, Px( 10 ) );
         }
 
+        DrawIcon( pDrawList, icon, ImVec2( pos.x + size / 2, pos.y + size / 2 ), active ? g_accent : ( hovered ? g_text : g_muted ) );
         ImGui::SetItemTooltip( "%s", pTooltip );
         return clicked;
     }
@@ -299,7 +423,6 @@ namespace Kui::UI
         float const spacing = ImGui::GetStyle().ItemSpacing.x;
         ImGui::PushID( pId );
         ImGui::PushStyleVar( ImGuiStyleVar_FrameRounding, Px( 14 ) );
-        ImGui::PushStyleColor( ImGuiCol_Text, g_accent );
         for( size_t i = 0; i < names.size(); i++ )
         {
             std::string const label = "+  " + names[i];
@@ -315,7 +438,6 @@ namespace Kui::UI
             }
             ImGui::PopID();
         }
-        ImGui::PopStyleColor();
         ImGui::PopStyleVar();
         ImGui::PopID();
         return clicked;

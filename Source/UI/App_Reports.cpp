@@ -26,8 +26,7 @@ namespace Kui::UI
     void App::DrawReports()
     {
         Core::Day const today = Core::DayOf( Core::Now() );
-        ImGui::AlignTextToFramePadding();
-        Label( "Reports", 22.0f, g_text, true );
+        RowLabel( "Reports", 22.0f, g_text, true );
         ImGui::SameLine( 0, Px( 24 ) );
         DrawWeekNav( today );
 

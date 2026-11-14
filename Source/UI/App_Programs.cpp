@@ -4,13 +4,15 @@
 #include <imgui_stdlib.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <format>
 
 #include "Core/Text.h"
+#include "Platform/Platform.h"
 #include "UI/Widgets.h"
 
 //-------------------------------------------------------------------------
-// Programs page: add programs to track and edit the rules in place. Tracker options are on the Settings page.
+// Programs page: add programs to track and edit the rules in place. Tracker options are in the Settings popup.
 //-------------------------------------------------------------------------
 
 namespace Kui::UI
@@ -27,40 +29,54 @@ namespace Kui::UI
         Label( "Time is tracked automatically while one of these is in front.", g_bodySize, g_muted );
         ImGui::Dummy( ImVec2( 0, Px( 6 ) ) );
 
-        // Add: click an open program, or type a name
+        // Add: click an open or recent program, type a name, or browse for an exe. The box also filters the lists.
         auto const isNew = [this]( std::string const& app )
         {
             return std::ranges::none_of( m_settings.m_rules, [&app]( Core::Rule const& r ) { return Core::IEqualsAscii( Core::Trim( r.m_keyword ), app ); } );
         };
 
+        std::string const typed = Core::Trim( m_manualProgram );
+        std::string const query = Core::ToLower( typed );
+        auto const isShown = [&]( std::string const& app ) { return isNew( app ) && Core::Contains( Core::ToLower( app ), query ); };
+
         std::vector<std::string> open;
-        std::ranges::copy_if( m_openPrograms, std::back_inserter( open ), isNew );
+        std::ranges::copy_if( m_openPrograms, std::back_inserter( open ), isShown );
         std::vector<std::string> recent;
-        std::ranges::copy_if( m_recent, std::back_inserter( recent ), [&]( std::string const& app ) { return isNew( app ) && std::ranges::find( m_openPrograms, app ) == m_openPrograms.end(); } );
+        std::ranges::copy_if( m_recent, std::back_inserter( recent ), [&]( std::string const& app ) { return isShown( app ) && std::ranges::find( m_openPrograms, app ) == m_openPrograms.end(); } );
 
         BeginCard( "add" );
         Caption( "ADD A PROGRAM" );
+        ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x - Px( 200 ) );
+        ImGui::InputTextWithHint( "##manual", "Search, or type a program or window title word, e.g. youtube", &m_manualProgram );
+        bool const enter = ImGui::IsItemDeactivated() && ( ImGui::IsKeyPressed( ImGuiKey_Enter ) || ImGui::IsKeyPressed( ImGuiKey_KeypadEnter ) );
+        ImGui::SameLine( 0, Px( 10 ) );
+        bool const canAdd = !typed.empty();
+        if( ( AccentButton( "Add", ImVec2( 80, 0 ), canAdd ) || enter ) && canAdd )
+        {
+            add = typed;
+        }
+        ImGui::SetItemTooltip( "Track any window whose program name or title contains this text" );
+
+        ImGui::SameLine( 0, Px( 10 ) );
+        bool const browse = ImGui::Button( "Browse...", ImVec2( Px( 100 ), 0 ) );
+        ImGui::SetItemTooltip( "Pick a program's .exe or shortcut, for one that isn't open" );
+
+        if( canAdd )
+        {
+            Label( std::format( "Enter adds \"{}\": tracked while a window's program or title contains it.", typed ), 13.0f, g_muted );
+        }
+
+        ImGui::Dummy( ImVec2( 0, Px( 2 ) ) );
         Label( "Open right now, click to track", 13.0f, g_muted );
-        if( std::optional<std::string> const clicked = Chips( "open", open, "Nothing new is open." ) )
+        if( std::optional<std::string> const clicked = Chips( "open", open, query.empty() ? "Nothing new is open." : "No open program matches." ) )
         {
             add = clicked;
         }
 
         Label( "Recently seen", 13.0f, g_muted );
-        if( std::optional<std::string> const clicked = Chips( "recent", recent, "Programs you use will show up here." ) )
+        if( std::optional<std::string> const clicked = Chips( "recent", recent, query.empty() ? "Programs you use will show up here." : "No recent program matches." ) )
         {
             add = clicked;
-        }
-
-        ImGui::Dummy( ImVec2( 0, 0 ) );
-        ImGui::SetNextItemWidth( ImGui::GetContentRegionAvail().x - Px( 90 ) );
-        ImGui::InputTextWithHint( "##manual", "Or type a program or window title word, e.g. youtube", &m_manualProgram );
-        bool const enter = ImGui::IsItemDeactivated() && ( ImGui::IsKeyPressed( ImGuiKey_Enter ) || ImGui::IsKeyPressed( ImGuiKey_KeypadEnter ) );
-        ImGui::SameLine( 0, Px( 10 ) );
-        bool const canAdd = !Core::Trim( m_manualProgram ).empty();
-        if( ( AccentButton( "Add", ImVec2( 80, 0 ), canAdd ) || enter ) && canAdd )
-        {
-            add = std::exchange( m_manualProgram, {} );
         }
         EndCard();
 
@@ -162,7 +178,7 @@ namespace Kui::UI
             std::string const hint = "Entry name (default: " + Core::Trim( rule.m_keyword ) + ")";
             changed |= ImGui::InputTextWithHint( "##description", hint.c_str(), &rule.m_description );
             ImGui::SameLine( 0, Px( 14 ) );
-            changed |= ProjectField( "project", rule.m_project, half / Px( 1 ), m_projects );
+            changed |= ProjectField( "project", rule.m_project, half / Px( 1 ), m_projects, &m_settings.m_projectColors );
 
             EndCard();
             ImGui::PopID();
@@ -182,11 +198,42 @@ namespace Kui::UI
         ImGui::EndChild();
         ImGui::EndChild();
 
+        // Not open and never seen: pick its exe. Matched by exe name, named by the exe's description.
+        std::string addName;
+        if( browse )
+        {
+            if( std::optional<std::filesystem::path> const exe = Platform::PickProgram( static_cast<HWND>( ImGui::GetMainViewport()->PlatformHandleRaw ) ) )
+            {
+                if( Core::IEqualsAscii( Core::Narrow( exe->extension().wstring() ), ".exe" ) )
+                {
+                    add = Core::Narrow( exe->stem().wstring() );
+                    addName = Core::Trim( Platform::ExeDescription( *exe ) );
+                    if( Core::IEqualsAscii( addName, *add ) )
+                    {
+                        addName.clear();
+                    }
+                }
+                else
+                {
+                    ShowToast( "That shortcut doesn't point to a program (.exe)" );
+                }
+            }
+        }
+
         if( add.has_value() )
         {
             // One click adds a program; its name and project can be edited on its card afterwards
-            AddRule( *add, "", "" );
-            changed = true;
+            std::string const shown = addName.empty() ? Core::Trim( *add ) : addName;
+            if( AddRule( *add, addName, "" ) )
+            {
+                m_manualProgram.clear();
+                ShowToast( "Now tracking " + shown );
+                changed = true;
+            }
+            else
+            {
+                ShowToast( shown + " is already tracked" );
+            }
         }
 
         if( changed )

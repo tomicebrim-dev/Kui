@@ -75,6 +75,12 @@ namespace Kui::Platform
     void RevealInExplorer( std::filesystem::path const& file );
     void OpenFolder( std::filesystem::path const& dir );
 
+    // Open dialog for a program's .exe (or a shortcut, resolved to its target). Nullopt when cancelled.
+    std::optional<std::filesystem::path> PickProgram( HWND hOwner );
+
+    // The exe file's FileDescription ("Google Chrome"), empty if it has none
+    std::string ExeDescription( std::filesystem::path const& exe );
+
     // Names of the subkeys of a registry key
     std::vector<std::string> RegSubkeys( HKEY root, std::string const& path );
 

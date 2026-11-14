@@ -148,10 +148,12 @@ namespace Kui::Tests
         settings.m_textScale = 1.4f;
         settings.m_checkUpdates = false;
         settings.m_autostart = false;
+        settings.m_projectColors = { { "Recording", 0xff3366ccu } };
         store.SaveSettings( settings );
         Core::Settings back = store.LoadSettings();
         CHECK( back.m_rules.size() == 1 && back.m_rules[0].m_mode == Core::Mode::AllWords && back.m_workHours == 7.5f );
         CHECK( back.m_textScale == 1.4f && !back.m_checkUpdates && !back.m_autostart );
+        CHECK( back.m_projectColors.size() == 1 && back.m_projectColors["Recording"] == 0xff3366ccu );
 
         // A save while the other process is reading the file waits for the read instead of being dropped
         {

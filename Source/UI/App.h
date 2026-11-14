@@ -28,7 +28,6 @@ namespace Kui::UI
         Calendar,
         Reports,
         Programs,
-        Settings,
     };
 
     // How the window starts: the page to show and the test hooks
@@ -38,6 +37,7 @@ namespace Kui::UI
         View    m_view = View::Timer;
         int     m_reportTab = 0;            // 0 = Summary, 1 = Workload
         bool    m_showSetup = false;
+        bool    m_showSettings = false;     // Open the settings popup
         int     m_setupStep = 0;
     };
 
@@ -95,8 +95,8 @@ namespace Kui::UI
         void InstallUpdate();
         void PollUpdate();
 
-        // Adds a rule unless the keyword is empty or already tracked. Caller saves.
-        void AddRule( std::string const& keyword, std::string const& description, std::string const& project );
+        // Adds a rule unless the keyword is empty or already tracked. False when skipped. Caller saves.
+        bool AddRule( std::string const& keyword, std::string const& description, std::string const& project );
 
         // Seconds on the running timer, 0 when stopped
         int64_t LiveSecs() const;
@@ -105,6 +105,7 @@ namespace Kui::UI
         ProjectSecs DayParts( Core::Day day ) const;
 
         void HandleShortcuts();
+        void DrawRail();
         void DrawSidebar();
         void DrawSidebarBody();
         void DrawSidebarFooter();
@@ -117,6 +118,7 @@ namespace Kui::UI
         void DrawReports();
         void DrawPrograms();
         void DrawSetup();
+        // The settings popup, centered over the window. Opened by m_openSettings.
         void DrawSettings();
         void DrawToast();
 
@@ -186,6 +188,7 @@ namespace Kui::UI
         bool                                                m_calendarScrolled = false;
         int                                                 m_reportTab = 0;
         std::set<GroupKey>                                  m_expanded;
+        std::set<Core::Day>                                 m_collapsedDays;    // Day headers folded shut
         std::optional<Edit>                                 m_edit;
         std::optional<Undo>                                 m_undo;
         std::optional<Toast>                                m_toast;
@@ -193,6 +196,9 @@ namespace Kui::UI
         bool                                                m_suggestionsHovered = false;
         float                                               m_sideFooterHeight = 0.0f;
         std::optional<SetupState>                           m_setup;
+        bool                                                m_openSettings = false; // Open the settings popup next frame
+        bool                                                m_settingsOpen = false; // Settings popup showing (last frame)
+        std::string                                         m_exportStatus;     // Result of the last CSV export
 
         // Updates
         std::future<std::optional<Updater::Release>>        m_updateCheck;

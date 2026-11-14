@@ -12,6 +12,8 @@
 
 namespace Kui::UI
 {
+    static std::map<std::string, uint32_t> const* g_pProjectColors = nullptr;
+
     static ImVec4 Vec( ImU32 color )
     {
         return ImGui::ColorConvertU32ToFloat4( color );
@@ -97,7 +99,7 @@ namespace Kui::UI
         float const fontScale = style.FontScaleMain;
         style = ImGuiStyle();
         style.FontSizeBase = g_bodySize;
-        style.WindowPadding = ImVec2( 0, 0 );
+        style.WindowPadding = ImVec2( 10, 7 );      // Tooltips and popups; the root window pushes 0
         style.ItemSpacing = ImVec2( 8, 8 );
         style.ItemInnerSpacing = ImVec2( 6, 6 );
         style.FramePadding = ImVec2( 10, 6 );
@@ -124,9 +126,9 @@ namespace Kui::UI
         pColors[ImGuiCol_ChildBg] = ImVec4( 0, 0, 0, 0 );
         pColors[ImGuiCol_PopupBg] = Vec( g_card );
         pColors[ImGuiCol_Border] = Vec( g_line );
-        pColors[ImGuiCol_FrameBg] = Vec( g_bar );
-        pColors[ImGuiCol_FrameBgHovered] = Vec( g_bar );
-        pColors[ImGuiCol_FrameBgActive] = Vec( g_bar );
+        pColors[ImGuiCol_FrameBg] = Vec( g_field );
+        pColors[ImGuiCol_FrameBgHovered] = Vec( g_field );
+        pColors[ImGuiCol_FrameBgActive] = Vec( g_field );
         pColors[ImGuiCol_Button] = Vec( g_card );
         pColors[ImGuiCol_ButtonHovered] = Vec( g_hover );
         pColors[ImGuiCol_ButtonActive] = Vec( g_accentDark );
@@ -134,6 +136,7 @@ namespace Kui::UI
         pColors[ImGuiCol_HeaderHovered] = Vec( g_hover );
         pColors[ImGuiCol_HeaderActive] = Vec( g_accentDark );
         pColors[ImGuiCol_CheckMark] = Vec( g_accent );
+        pColors[ImGuiCol_CheckboxSelectedBg] = Vec( g_accentDark );
         pColors[ImGuiCol_SliderGrab] = Vec( g_accent );
         pColors[ImGuiCol_SliderGrabActive] = Vec( g_accent );
         pColors[ImGuiCol_TextSelectedBg] = Vec( g_accentDark );
@@ -143,6 +146,7 @@ namespace Kui::UI
         pColors[ImGuiCol_ScrollbarGrabHovered] = Vec( g_muted );
         pColors[ImGuiCol_ScrollbarGrabActive] = Vec( g_muted );
         pColors[ImGuiCol_Separator] = Vec( g_line );
+        pColors[ImGuiCol_ModalWindowDimBg] = ImVec4( 0, 0, 0, 0.55f );
     }
 
     ImU32 Fade( ImU32 color, float alpha )
@@ -168,6 +172,15 @@ namespace Kui::UI
             return g_muted;
         }
 
+        if( g_pProjectColors != nullptr )
+        {
+            auto const found = g_pProjectColors->find( std::string( Core::Trim( project ) ) );
+            if( found != g_pProjectColors->end() )
+            {
+                return found->second | IM_COL32_A_MASK;
+            }
+        }
+
         // Same hash as the original, so projects keep their colors
         size_t hash = 5;
         for( char c : project )
@@ -175,5 +188,10 @@ namespace Kui::UI
             hash = hash * 131 + static_cast<unsigned char>( c );
         }
         return g_palette[hash % std::size( g_palette )];
+    }
+
+    void SetProjectColors( std::map<std::string, uint32_t> const* pColors )
+    {
+        g_pProjectColors = pColors;
     }
 }

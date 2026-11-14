@@ -19,12 +19,20 @@ namespace Kui::UI
     {
         Play,
         Delete,
+        Timer,
+        Calendar,
+        Reports,
+        Programs,
+        Settings,
     };
 
     //-------------------------------------------------------------------------
 
     // Text in a given size, color and weight
     void Label( std::string_view text, float size = g_bodySize, ImU32 color = g_text, bool semibold = false );
+
+    // Text on the same baseline as the button labels of its row; lays out as one frame-height item
+    void RowLabel( std::string_view text, float size = g_bodySize, ImU32 color = g_text, bool semibold = false );
 
     // Small semibold all-caps section title
     void Caption( std::string_view text );
@@ -52,11 +60,12 @@ namespace Kui::UI
     // Filled accent button with dark semibold text
     bool AccentButton( char const* pLabel, ImVec2 minSize = ImVec2( 0, 0 ), bool enabled = true );
 
-    // Sidebar row: accent bar and tint when active, shortcut shown on hover
-    bool NavItem( char const* pLabel, char const* pShortcut, bool active );
+    // Square icon link for the left rail: tinted when active, tooltip on hover
+    bool RailItem( char const* pId, Icon icon, char const* pTooltip, bool active );
 
     // Project text box with a colored dot and a list of known projects. True when changed.
-    bool ProjectField( char const* pId, std::string& text, float width, std::vector<std::string> const& projects );
+    // With pColors, clicking the dot picks the project's color.
+    bool ProjectField( char const* pId, std::string& text, float width, std::vector<std::string> const& projects, std::map<std::string, uint32_t>* pColors = nullptr );
 
     // The big round start/stop button
     bool PlayButton( bool running );

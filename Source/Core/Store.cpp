@@ -238,6 +238,7 @@ namespace Kui::Core
         Get( *j, "text_scale", s.m_textScale );
         Get( *j, "check_updates", s.m_checkUpdates );
         Get( *j, "autostart", s.m_autostart );
+        Get( *j, "project_colors", s.m_projectColors );
         return s;
     }
 
@@ -269,6 +270,7 @@ namespace Kui::Core
         j["text_scale"] = s.m_textScale;
         j["check_updates"] = s.m_checkUpdates;
         j["autostart"] = s.m_autostart;
+        j["project_colors"] = s.m_projectColors;
         WriteAtomic( File( "settings.json" ), j.dump( 2 ) );
     }
 

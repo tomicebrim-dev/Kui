@@ -35,7 +35,7 @@ namespace Kui
 {
     constexpr float g_windowWidth = 1100.0f;
     constexpr float g_windowHeight = 680.0f;
-    constexpr float g_minWidth = 760.0f;
+    constexpr float g_minWidth = 820.0f;
     constexpr float g_minHeight = 480.0f;
 
     // Frames kept running after input, so hovers and tooltips settle before going idle
@@ -396,7 +396,7 @@ namespace Kui
         options.m_isScreenshot = isScreenshot;
         options.m_view = hasArg( L"--programs" ) ? UI::View::Programs : options.m_view;
         options.m_view = hasArg( L"--calendar" ) ? UI::View::Calendar : options.m_view;
-        options.m_view = hasArg( L"--settings" ) ? UI::View::Settings : options.m_view;
+        options.m_showSettings = hasArg( L"--settings" );
         options.m_view = ( hasArg( L"--reports" ) || hasArg( L"--workload" ) ) ? UI::View::Reports : options.m_view;
         options.m_reportTab = hasArg( L"--workload" ) ? 1 : 0;
         options.m_showSetup = hasArg( L"--setup" ) || hasArg( L"--setup2" );

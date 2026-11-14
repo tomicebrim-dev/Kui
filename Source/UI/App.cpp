@@ -28,8 +28,10 @@ namespace Kui::UI
         , m_isScreenshot( options.m_isScreenshot )
         , m_view( options.m_view )
         , m_reportTab( options.m_reportTab )
+        , m_openSettings( options.m_showSettings )
     {
         m_settings = m_store.LoadSettings();
+        SetProjectColors( &m_settings.m_projectColors );
         m_settings.m_textScale = std::clamp( m_settings.m_textScale, g_minTextScale, g_maxTextScale );
         ImGui::GetStyle().FontScaleMain = m_settings.m_textScale;
         if( m_settings.m_checkUpdates && !m_isScreenshot )
@@ -237,12 +239,12 @@ namespace Kui::UI
         }
     }
 
-    void App::AddRule( std::string const& keyword, std::string const& description, std::string const& project )
+    bool App::AddRule( std::string const& keyword, std::string const& description, std::string const& project )
     {
         std::string const k = Core::Trim( keyword );
         if( k.empty() )
         {
-            return;
+            return false;
         }
 
         uint64_t id = 0;
@@ -250,7 +252,7 @@ namespace Kui::UI
         {
             if( Core::IEqualsAscii( Core::Trim( rule.m_keyword ), k ) )
             {
-                return;
+                return false;
             }
             id = std::max( id, rule.m_id );
         }
@@ -261,6 +263,7 @@ namespace Kui::UI
         rule.m_description = description;
         rule.m_project = project;
         m_settings.m_rules.push_back( rule );
+        return true;
     }
 
     int64_t App::LiveSecs() const
@@ -310,13 +313,14 @@ namespace Kui::UI
 
     void App::HandleShortcuts()
     {
-        for( int i = 0; i < 5; i++ )
+        for( int i = 0; i < 4; i++ )
         {
             if( ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | static_cast<ImGuiKey>( ImGuiKey_1 + i ) ) )
             {
                 m_view = static_cast<View>( i );
             }
         }
+        m_openSettings |= ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | ImGuiKey_5 );
 
         bool const undo = ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | ImGuiKey_Z );
         bool toggle = false;
@@ -357,7 +361,9 @@ namespace Kui::UI
         ImGui::SetNextWindowPos( pViewport->WorkPos );
         ImGui::SetNextWindowSize( pViewport->WorkSize );
         ImGuiWindowFlags const flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse;
+        ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( 0, 0 ) );
         ImGui::Begin( "Kui", nullptr, flags );
+        ImGui::PopStyleVar();
 
         double const time = ImGui::GetTime();
         if( time - m_checkedAt > 1.0 )
@@ -379,6 +385,8 @@ namespace Kui::UI
         }
 
         HandleShortcuts();
+        DrawRail();
+        ImGui::SameLine( 0, 0 );
         DrawSidebar();
         ImGui::SameLine( 0, 0 );
 
@@ -414,15 +422,10 @@ namespace Kui::UI
                 DrawPrograms();
             }
             break;
-
-            case View::Settings:
-            {
-                DrawSettings();
-            }
-            break;
         }
         ImGui::EndChild();
         ImGui::EndChild();
+        DrawSettings();
         ImGui::End();
 
         DrawToast();

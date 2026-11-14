@@ -10,18 +10,72 @@
 #include "UI/Widgets.h"
 
 //-------------------------------------------------------------------------
-// Left column: logo, page links, today's totals and the tracker status. The footer is pinned; the rest scrolls.
+// Far-left icon rail (logo, page links, Settings), then the sidebar: today's totals and the tracker status.
+// The sidebar footer is pinned; the rest scrolls.
 //-------------------------------------------------------------------------
 
 namespace Kui::UI
 {
+    void App::DrawRail()
+    {
+        float const width = Px( 60 );
+        ImGui::PushStyleColor( ImGuiCol_ChildBg, g_field );
+        ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( Px( 10 ), Px( 16 ) ) );
+        ImGui::PushStyleVar( ImGuiStyleVar_ChildRounding, 0.0f );   // Flat edge panels
+        ImGui::BeginChild( "rail", ImVec2( width, 0 ), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
+        ImGui::PopStyleVar( 2 );
+        ImGui::PopStyleColor();
+
+        // Logo: a clock face, on the same row as the sidebar's name
+        ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+        ImVec2 const pos = ImGui::GetCursorScreenPos();
+        ImVec2 const center( pos.x + Px( 20 ), pos.y + Px( 16 ) );
+        pDrawList->AddCircleFilled( center, Px( 16 ), g_accent );
+        pDrawList->AddCircle( center, Px( 7.5f ), g_field, 0, Px( 2.5f ) );
+        pDrawList->AddLine( ImVec2( center.x, center.y - Px( 10 ) ), ImVec2( center.x, center.y - Px( 3 ) ), g_field, Px( 2.5f ) );
+        ImGui::Dummy( ImVec2( Px( 40 ), Px( 32 ) ) );
+        ImGui::Dummy( ImVec2( 0, Px( 10 ) ) );
+
+        struct RailLink
+        {
+            View            m_view;
+            Icon            m_icon;
+            char const*     m_pId;
+            char const*     m_pTooltip;
+        };
+
+        constexpr RailLink links[] =
+        {
+            { View::Timer, Icon::Timer, "timer", "Timer  Ctrl+1" },
+            { View::Calendar, Icon::Calendar, "calendar", "Calendar  Ctrl+2" },
+            { View::Reports, Icon::Reports, "reports", "Reports  Ctrl+3" },
+            { View::Programs, Icon::Programs, "programs", "Programs  Ctrl+4" },
+        };
+
+        ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( Px( 8 ), Px( 6 ) ) );
+        for( RailLink const& link : links )
+        {
+            if( RailItem( link.m_pId, link.m_icon, link.m_pTooltip, m_view == link.m_view ) )
+            {
+                m_view = link.m_view;
+            }
+        }
+        ImGui::PopStyleVar();
+
+        // Settings pinned to the bottom; opens the settings popup
+        ImGui::SetCursorPosY( ImGui::GetWindowHeight() - Px( 16 ) - Px( 40 ) );
+        m_openSettings |= RailItem( "settings", Icon::Settings, "Settings  Ctrl+5", m_settingsOpen );
+        ImGui::EndChild();
+    }
+
     void App::DrawSidebar()
     {
         float const width = std::clamp( ImGui::GetContentRegionAvail().x * 0.25f, Px( 200 ), Px( 250 ) );
         ImGui::PushStyleColor( ImGuiCol_ChildBg, g_side );
         ImGui::PushStyleVar( ImGuiStyleVar_WindowPadding, ImVec2( Px( 16 ), Px( 16 ) ) );
+        ImGui::PushStyleVar( ImGuiStyleVar_ChildRounding, 0.0f );   // Flat edge panels
         ImGui::BeginChild( "sidebar", ImVec2( width, 0 ), ImGuiChildFlags_AlwaysUseWindowPadding, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse );
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar( 2 );
         ImGui::PopStyleColor();
 
         // Footer height is measured the frame before, so the body leaves room for it
@@ -38,43 +92,12 @@ namespace Kui::UI
 
     void App::DrawSidebarBody()
     {
-        // Logo: a clock face
+        // Name, beside the rail's logo
         ImDrawList* pDrawList = ImGui::GetWindowDrawList();
         ImVec2 const pos = ImGui::GetCursorScreenPos();
-        ImVec2 const center( pos.x + Px( 16 ), pos.y + Px( 16 ) );
-        pDrawList->AddCircleFilled( center, Px( 16 ), g_accent );
-        pDrawList->AddCircle( center, Px( 7.5f ), g_side, 0, Px( 2.5f ) );
-        pDrawList->AddLine( ImVec2( center.x, center.y - Px( 10 ) ), ImVec2( center.x, center.y - Px( 3 ) ), g_side, Px( 2.5f ) );
-        TextAt( pDrawList, ImVec2( pos.x + Px( 42 ), center.y ), "Kui", 17.0f, g_text, true );
+        TextAt( pDrawList, ImVec2( pos.x + Px( 4 ), pos.y + Px( 16 ) ), "Kui", 17.0f, g_text, true );
         ImGui::Dummy( ImVec2( Px( 32 ), Px( 32 ) ) );
         ImGui::Dummy( ImVec2( 0, Px( 10 ) ) );
-
-        struct NavLink
-        {
-            View            m_view;
-            char const*     m_pLabel;
-            char const*     m_pShortcut;
-        };
-
-        constexpr NavLink links[] =
-        {
-            { View::Timer, "Timer", "Ctrl+1" },
-            { View::Calendar, "Calendar", "Ctrl+2" },
-            { View::Reports, "Reports", "Ctrl+3" },
-            { View::Programs, "Programs", "Ctrl+4" },
-            { View::Settings, "Settings", "Ctrl+5" },
-        };
-
-        ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( Px( 8 ), Px( 4 ) ) );
-        for( NavLink const& link : links )
-        {
-            if( NavItem( link.m_pLabel, link.m_pShortcut, m_view == link.m_view ) )
-            {
-                m_view = link.m_view;
-            }
-        }
-        ImGui::PopStyleVar();
-        ImGui::Dummy( ImVec2( 0, Px( 14 ) ) );
 
         Core::Day const today = Core::DayOf( Core::Now() );
         int64_t const live = LiveSecs();
@@ -206,22 +229,6 @@ namespace Kui::UI
         ImGui::PopStyleVar();
         EndCard();
 
-        if( FlatButton( "export", "Export CSV" ) )
-        {
-            std::optional<std::filesystem::path> const path = m_store.ExportCsv();
-            if( path.has_value() )
-            {
-                Platform::RevealInExplorer( *path );
-                ShowToast( "Exported time-entries.csv" );
-            }
-            else
-            {
-                ShowToast( "Couldn't write the CSV file" );
-            }
-        }
-        ImGui::SetItemTooltip( "Save every entry as a spreadsheet file and show it" );
-
-        ImGui::SameLine( 0, Px( 14 ) );
         if( FlatButton( "folder", "Data folder" ) )
         {
             Platform::OpenFolder( m_store.GetDir() );
@@ -229,6 +236,6 @@ namespace Kui::UI
 
         ImGui::SameLine( 0, Px( 14 ) );
         FlatButton( "keys", "Keys" );
-        ImGui::SetItemTooltip( "Ctrl+1–5  switch page\nN  type what you're doing\nS  start / stop timer\n← →  previous / next week\nT  back to this week\nCtrl+Z  undo delete\nEsc  cancel edit" );
+        ImGui::SetItemTooltip( "Ctrl+1–4  switch page\nCtrl+5  settings\nN  type what you're doing\nS  start / stop timer\n← →  previous / next week\nT  back to this week\nCtrl+Z  undo delete\nEsc  cancel edit" );
     }
 }

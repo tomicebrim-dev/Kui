@@ -2,6 +2,9 @@
 
 #include <imgui.h>
 
+#include <cstdint>
+#include <map>
+#include <string>
 #include <string_view>
 
 //-------------------------------------------------------------------------
@@ -13,6 +16,7 @@ namespace Kui::UI
     constexpr ImU32 g_side = IM_COL32( 13, 16, 20, 255 );
     constexpr ImU32 g_background = IM_COL32( 20, 24, 29, 255 );
     constexpr ImU32 g_bar = IM_COL32( 16, 19, 23, 255 );
+    constexpr ImU32 g_field = IM_COL32( 11, 13, 16, 255 );
     constexpr ImU32 g_card = IM_COL32( 28, 33, 39, 255 );
     constexpr ImU32 g_hover = IM_COL32( 36, 42, 50, 255 );
     constexpr ImU32 g_line = IM_COL32( 44, 51, 59, 255 );
@@ -65,6 +69,9 @@ namespace Kui::UI
     // Brighter (factor > 1) or darker color
     ImU32 Scale( ImU32 color, float factor );
 
-    // A stable palette color per project; muted for "no project"
+    // A stable palette color per project, or the user's pick; muted for "no project"
     ImU32 ColorFor( std::string_view project );
+
+    // User-picked project colors that ColorFor checks first. Must outlive every ColorFor call.
+    void SetProjectColors( std::map<std::string, uint32_t> const* pColors );
 }

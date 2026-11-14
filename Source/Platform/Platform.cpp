@@ -1,5 +1,6 @@
 #include "Platform/Platform.h"
 
+#include <commdlg.h>
 #include <dwmapi.h>
 #include <shellapi.h>
 #include <tlhelp32.h>
@@ -72,9 +73,8 @@ namespace Kui::Platform
     }
 
     // The exe's FileDescription ("Google Chrome"), empty if it has none. Reads the exe file, not the process.
-    static std::wstring ReadFileDescription( std::wstring const& ntPath )
+    static std::wstring ReadFileDescription( std::wstring const& file )
     {
-        std::wstring const file = L"\\\\?\\GLOBALROOT" + ntPath;
         DWORD handle = 0;
         DWORD const size = GetFileVersionInfoSizeW( file.c_str(), &handle );
         if( size == 0 )
@@ -120,7 +120,7 @@ namespace Kui::Platform
         auto it = s_cache.find( ntPath );
         if( it == s_cache.end() )
         {
-            it = s_cache.emplace( ntPath, ReadFileDescription( ntPath ) ).first;
+            it = s_cache.emplace( ntPath, ReadFileDescription( L"\\\\?\\GLOBALROOT" + ntPath ) ).first;
         }
         return it->second;
     }
@@ -332,6 +332,29 @@ namespace Kui::Platform
     void OpenFolder( std::filesystem::path const& dir )
     {
         ShellExecuteW( nullptr, L"open", dir.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
+    }
+
+    std::optional<std::filesystem::path> PickProgram( HWND hOwner )
+    {
+        // Shortcuts resolve to their target, so Start menu entries work too
+        wchar_t file[4096] = {};
+        OPENFILENAMEW ofn { sizeof( OPENFILENAMEW ) };
+        ofn.hwndOwner = hOwner;
+        ofn.lpstrFilter = L"Programs (*.exe, shortcuts)\0*.exe;*.lnk\0";
+        ofn.lpstrFile = file;
+        ofn.nMaxFile = static_cast<DWORD>( std::size( file ) );
+        ofn.lpstrTitle = L"Choose a program to track";
+        ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_DONTADDTORECENT;
+        if( !GetOpenFileNameW( &ofn ) )
+        {
+            return std::nullopt;
+        }
+        return std::filesystem::path( file );
+    }
+
+    std::string ExeDescription( std::filesystem::path const& exe )
+    {
+        return Core::Narrow( ReadFileDescription( exe.wstring() ) );
     }
 
     std::vector<std::string> RegSubkeys( HKEY root, std::string const& path )

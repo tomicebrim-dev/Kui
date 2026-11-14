@@ -76,10 +76,9 @@ namespace Kui::UI
         Core::Day const today = Core::DayOf( Core::Now() );
         auto const todayFound = m_daySecs.find( today );
         int64_t const todaySecs = ( todayFound != m_daySecs.end() ? todayFound->second : 0 ) + LiveSecs();
-        ImGui::AlignTextToFramePadding();
-        Label( "Time entries", 20.0f, g_text, true );
-        ImGui::SameLine();
-        Label( Core::FormatHM( todaySecs ) + " today", g_bodySize, g_muted );
+        RowLabel( "Time entries", 20.0f, g_text, true );
+        ImGui::SameLine( 0, Px( 10 ) );
+        RowLabel( Core::FormatHM( todaySecs ) + " today", g_bodySize, g_muted );
 
         if( m_edit.has_value() && ImGui::IsKeyPressed( ImGuiKey_Escape ) )
         {
@@ -88,12 +87,19 @@ namespace Kui::UI
 
         std::vector<Row> rows;
         rows.reserve( m_groups.size() + 64 );
+        bool collapsed = false;
         for( size_t i = 0; i < m_groups.size(); i++ )
         {
             Group const& group = m_groups[i];
             if( i == 0 || m_groups[i - 1].m_key.m_day != group.m_key.m_day )
             {
                 rows.push_back( Row{ RowKind::Head, i } );
+                collapsed = m_collapsedDays.contains( group.m_key.m_day );
+            }
+
+            if( collapsed )
+            {
+                continue;
             }
 
             rows.push_back( Row{ RowKind::Group, i } );
@@ -153,10 +159,21 @@ namespace Kui::UI
             {
                 case RowKind::Head:
                 {
-                    Group const& group = m_groups[row.m_index];
+                    // Click to fold the day away
+                    Core::Day const day = m_groups[row.m_index].m_key.m_day;
+                    bool const folded = m_collapsedDays.contains( day );
+                    ImGui::SetCursorScreenPos( ImVec2( pos.x, pos.y + Px( 10 ) ) );
+                    if( ImGui::InvisibleButton( "day", ImVec2( width, Px( g_headHeight - 10 ) ) ) && m_collapsedDays.erase( day ) == 0 )
+                    {
+                        m_collapsedDays.insert( day );
+                    }
+                    ImGui::SetItemTooltip( folded ? "Show this day" : "Hide this day" );
+
+                    ImU32 const color = ImGui::IsItemHovered() ? g_text : g_muted;
                     float const centerY = pos.y + Px( 24 );
-                    TextAt( pDrawList, ImVec2( pos.x, centerY ), Core::DayName( group.m_key.m_day, today ), 14.0f, g_muted, true );
-                    TextAt( pDrawList, ImVec2( pos.x + width, centerY ), Core::FormatHM( m_daySecs[group.m_key.m_day] ), 13.5f, g_muted, true, 1.0f );
+                    TextAt( pDrawList, ImVec2( pos.x + Px( 6 ), centerY ), folded ? "▸" : "▾", 13.0f, color, false, 0.5f );
+                    TextAt( pDrawList, ImVec2( pos.x + Px( 16 ), centerY ), Core::DayName( day, today ), 14.0f, color, true );
+                    TextAt( pDrawList, ImVec2( pos.x + width, centerY ), Core::FormatHM( m_daySecs[day] ), 13.5f, color, true, 1.0f );
                 }
                 break;
 

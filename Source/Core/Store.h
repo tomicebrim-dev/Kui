@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -64,6 +65,7 @@ namespace Kui::Core
         float               m_textScale = 1.2f;     // Multiplies every text size
         bool                m_checkUpdates = true;  // Look for a new release when the window opens
         bool                m_autostart = true;     // The user's choice; the installer rewrites the Run key on every update
+        std::map<std::string, uint32_t> m_projectColors;    // Picked colors (ImU32) by project; others use the palette
     };
 
     // The one running timer, started by hand or by a rule

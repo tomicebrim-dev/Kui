@@ -22,7 +22,7 @@ namespace Kui::UI
         std::string& description = running ? m_timer->m_description : m_description;
         std::string& project = running ? m_timer->m_project : m_project;
 
-        std::string subtitle = "Press Enter to start  ·  N to type, S to start/stop";
+        std::string subtitle = "Press Enter to start, N to type, and S to start/stop";
         if( running )
         {
             subtitle = ( m_timer->m_rule.has_value() ? "Auto-tracked since " : "Started " ) + Core::ClockHM( m_timer->m_start );
