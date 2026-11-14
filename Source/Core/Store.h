@@ -61,6 +61,8 @@ namespace Kui::Core
         int                 m_idleMinutes = 10;
         bool                m_firstRunDone = false;
         float               m_workHours = 8.0f;
+        float               m_textScale = 1.2f;     // Multiplies every text size
+        bool                m_checkUpdates = true;  // Look for a new release when the window opens
     };
 
     // The one running timer, started by hand or by a rule

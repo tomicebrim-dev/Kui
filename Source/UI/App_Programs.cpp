@@ -10,7 +10,7 @@
 #include "UI/Widgets.h"
 
 //-------------------------------------------------------------------------
-// Programs page: add programs to track, edit the rules in place, and the tracker options.
+// Programs page: add programs to track and edit the rules in place. Tracker options are on the Settings page.
 //-------------------------------------------------------------------------
 
 namespace Kui::UI
@@ -178,22 +178,6 @@ namespace Kui::UI
             std::swap( m_settings.m_rules[*swap], m_settings.m_rules[*swap + 1] );
             changed = true;
         }
-
-        // Options
-        ImGui::Dummy( ImVec2( 0, Px( 10 ) ) );
-        Caption( "OPTIONS" );
-        BeginCard( "options" );
-        changed |= ImGui::Checkbox( "Auto-tracking on", &m_settings.m_tracking );
-        changed |= ImGui::Checkbox( "Stop when no program matches", &m_settings.m_stopOnNoMatch );
-        changed |= ImGui::Checkbox( "Only after the program is in front for", &m_settings.m_focusOn );
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth( Px( 80 ) );
-        changed |= ImGui::DragInt( "##focusSecs", &m_settings.m_focusSecs, 1.0f, 1, 300, "%d s", ImGuiSliderFlags_AlwaysClamp );
-        changed |= ImGui::Checkbox( "Stop when I'm away for", &m_settings.m_idleOn );
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth( Px( 80 ) );
-        changed |= ImGui::DragInt( "##idleMinutes", &m_settings.m_idleMinutes, 1.0f, 1, 480, "%d min", ImGuiSliderFlags_AlwaysClamp );
-        EndCard();
 
         ImGui::EndChild();
         ImGui::EndChild();

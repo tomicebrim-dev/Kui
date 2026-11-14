@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <format>
 
 #include "Platform/Platform.h"
 #include "Tracker/Tracker.h"
@@ -61,6 +62,7 @@ namespace Kui::UI
             { View::Calendar, "Calendar", "Ctrl+2" },
             { View::Reports, "Reports", "Ctrl+3" },
             { View::Programs, "Programs", "Ctrl+4" },
+            { View::Settings, "Settings", "Ctrl+5" },
         };
 
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( Px( 8 ), Px( 4 ) ) );
@@ -157,6 +159,16 @@ namespace Kui::UI
 
     void App::DrawSidebarFooter()
     {
+        if( m_update.has_value() )
+        {
+            std::string const label = m_updateInstall.valid() ? "Downloading update…" : std::format( "Update to {}", m_update->m_version );
+            if( AccentButton( label.c_str(), ImVec2( ImGui::GetContentRegionAvail().x / Px( 1 ), 0 ), !m_updateInstall.valid() ) )
+            {
+                InstallUpdate();
+            }
+            ImGui::SetItemTooltip( "Download and install the new version, then reopen Kui" );
+        }
+
         bool const alive = Tracker::IsAlive( m_status );
         BeginCard( "status", g_background, 12.0f, 10.0f, g_background );
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( Px( 8 ), Px( 4 ) ) );
@@ -185,15 +197,6 @@ namespace Kui::UI
             Label( Ellipsize( "In front: " + m_status->m_app, ImGui::GetContentRegionAvail().x, 12.5f ), 12.5f, g_muted );
         }
 
-        ImGui::PushFont( nullptr, 13.5f );
-        ImGui::PushStyleVar( ImGuiStyleVar_FramePadding, ImVec2( Px( 3 ), Px( 3 ) ) );
-        if( ImGui::Checkbox( "Start with Windows", &m_autostart ) && !m_isScreenshot )
-        {
-            Platform::SetAutostart( m_autostart );
-        }
-        ImGui::PopStyleVar();
-        ImGui::PopFont();
-
         ImGui::PopStyleVar();
         EndCard();
 
@@ -220,6 +223,6 @@ namespace Kui::UI
 
         ImGui::SameLine( 0, Px( 14 ) );
         FlatButton( "keys", "Keys" );
-        ImGui::SetItemTooltip( "Ctrl+1–4  switch page\nN  type what you're doing\nS  start / stop timer\n← →  previous / next week\nT  back to this week\nCtrl+Z  undo delete\nEsc  cancel edit" );
+        ImGui::SetItemTooltip( "Ctrl+1–5  switch page\nN  type what you're doing\nS  start / stop timer\n← →  previous / next week\nT  back to this week\nCtrl+Z  undo delete\nEsc  cancel edit" );
     }
 }

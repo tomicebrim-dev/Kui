@@ -37,4 +37,11 @@ cmake --preset vs -DKUI_SIGN_THUMBPRINT=<thumbprint>
 
 `-DKUI_SIGN_TIMESTAMP=<url>` overrides the timestamp server (default DigiCert).
 
+## Releases & auto-update
+Kui checks the latest GitHub release when the window opens (Settings → Updates). A release is offered when its tag (`v1.2.0`) is newer than the built version and it has an `.msi` asset; the update downloads it, runs it with a progress bar, then reopens Kui. Bump `project(Kui VERSION ...)` in `CMakeLists.txt`, build the MSI, then:
+
+```bat
+gh release create v1.2.0 build\vs\Kui-1.2.0-x64.msi
+```
+
 

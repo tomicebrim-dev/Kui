@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(Kui VERSION 1.0.0 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
+project(Kui VERSION 1.1.2 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
 
 if(NOT WIN32)
   message(FATAL_ERROR "Kui is Windows-only (Win32 + Direct3D 11).")
@@ -35,7 +35,7 @@ target_include_directories(nlohmann_json SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/
 set(KUI_DEFS UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
 set(KUI_OPTS $<$<CXX_COMPILER_ID:MSVC>:/utf-8 /W3 /permissive- /MP>)
 
-# --- Everything that isn't UI: data files, tracker, Win32 helpers, setup detection ---
+# --- Everything that isn't UI: data files, tracker, Win32 helpers, setup detection, updater ---
 add_library(kui_core STATIC
   Source/Core/Text.cpp
   Source/Core/TimeUtil.cpp
@@ -43,11 +43,12 @@ add_library(kui_core STATIC
   Source/Core/Layout.cpp
   Source/Platform/Platform.cpp
   Source/Setup/SetupDetection.cpp
-  Source/Tracker/Tracker.cpp)
+  Source/Tracker/Tracker.cpp
+  Source/Updater/Updater.cpp)
 target_include_directories(kui_core PUBLIC Source)
-target_compile_definitions(kui_core PUBLIC ${KUI_DEFS})
+target_compile_definitions(kui_core PUBLIC ${KUI_DEFS} PRIVATE KUI_VERSION="${PROJECT_VERSION}")
 target_compile_options(kui_core PRIVATE ${KUI_OPTS})
-target_link_libraries(kui_core PUBLIC nlohmann_json shell32 advapi32 dwmapi)
+target_link_libraries(kui_core PUBLIC nlohmann_json shell32 advapi32 dwmapi winhttp)
 
 # --- The app: one exe; --tracker runs the same exe as the tray tracker ---
 configure_file(Resources/Kui.rc.in ${PROJECT_BINARY_DIR}/Kui.rc @ONLY)
@@ -63,6 +64,7 @@ add_executable(kui WIN32
   Source/UI/App_Reports.cpp
   Source/UI/App_Programs.cpp
   Source/UI/App_Setup.cpp
+  Source/UI/App_Settings.cpp
   ${PROJECT_BINARY_DIR}/Kui.rc)
 target_compile_options(kui PRIVATE ${KUI_OPTS})
 target_link_libraries(kui PRIVATE kui_core imgui windowscodecs ole32)

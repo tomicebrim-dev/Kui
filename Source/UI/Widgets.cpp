@@ -39,7 +39,7 @@ namespace Kui::UI
 
     float TextWidth( std::string_view text, float size, bool semibold )
     {
-        return FontFor( semibold )->CalcTextSizeA( Px( size ), FLT_MAX, 0.0f, text.data(), text.data() + text.size() ).x;
+        return FontFor( semibold )->CalcTextSizeA( FontPx( size ), FLT_MAX, 0.0f, text.data(), text.data() + text.size() ).x;
     }
 
     std::string Ellipsize( std::string_view text, float maxWidth, float size, bool semibold )
@@ -75,7 +75,7 @@ namespace Kui::UI
     void TextAt( ImDrawList* pDrawList, ImVec2 pos, std::string_view text, float size, ImU32 color, bool semibold, float alignX, float maxWidth )
     {
         std::string const shown = maxWidth > 0 ? Ellipsize( text, maxWidth, size, semibold ) : std::string( text );
-        float const px = Px( size );
+        float const px = FontPx( size );
         float const width = TextWidth( shown, size, semibold );
         ImVec2 const topLeft( pos.x - width * alignX, pos.y - px / 2 );
         pDrawList->AddText( FontFor( semibold ), px, topLeft, color, shown.c_str(), shown.c_str() + shown.size() );

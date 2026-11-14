@@ -388,6 +388,7 @@ namespace Kui
         options.m_isScreenshot = isScreenshot;
         options.m_view = hasArg( L"--programs" ) ? UI::View::Programs : options.m_view;
         options.m_view = hasArg( L"--calendar" ) ? UI::View::Calendar : options.m_view;
+        options.m_view = hasArg( L"--settings" ) ? UI::View::Settings : options.m_view;
         options.m_view = ( hasArg( L"--reports" ) || hasArg( L"--workload" ) ) ? UI::View::Reports : options.m_view;
         options.m_reportTab = hasArg( L"--workload" ) ? 1 : 0;
         options.m_showSetup = hasArg( L"--setup" ) || hasArg( L"--setup2" );

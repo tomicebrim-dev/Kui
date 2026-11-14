@@ -221,6 +221,8 @@ namespace Kui::Core
         Get( *j, "idle_minutes", s.m_idleMinutes );
         Get( *j, "first_run_done", s.m_firstRunDone );
         Get( *j, "work_hours", s.m_workHours );
+        Get( *j, "text_scale", s.m_textScale );
+        Get( *j, "check_updates", s.m_checkUpdates );
         return s;
     }
 
@@ -249,6 +251,8 @@ namespace Kui::Core
         j["idle_minutes"] = s.m_idleMinutes;
         j["first_run_done"] = s.m_firstRunDone;
         j["work_hours"] = s.m_workHours;
+        j["text_scale"] = s.m_textScale;
+        j["check_updates"] = s.m_checkUpdates;
         WriteAtomic( File( "settings.json" ), j.dump( 2 ) );
     }
 

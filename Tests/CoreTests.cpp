@@ -11,6 +11,7 @@
 #include "Core/Store.h"
 #include "Core/TimeUtil.h"
 #include "Setup/SetupDetection.h"
+#include "Updater/Updater.h"
 
 //-------------------------------------------------------------------------
 // Core logic checks, no framework: a failed CHECK prints the line and exits non-zero. Run by ctest.
@@ -137,11 +138,24 @@ namespace Kui::Tests
         Core::Settings settings;
         settings.m_rules = { MakeRule( "excel budget", Core::Mode::AllWords ) };
         settings.m_workHours = 7.5f;
+        settings.m_textScale = 1.4f;
+        settings.m_checkUpdates = false;
         store.SaveSettings( settings );
         Core::Settings const back = store.LoadSettings();
         CHECK( back.m_rules.size() == 1 && back.m_rules[0].m_mode == Core::Mode::AllWords && back.m_workHours == 7.5f );
+        CHECK( back.m_textScale == 1.4f && !back.m_checkUpdates );
 
         std::filesystem::remove_all( dir );
+    }
+
+    static void Versions()
+    {
+        CHECK( Updater::IsNewer( "v1.0.1", "1.0.0" ) );
+        CHECK( Updater::IsNewer( "1.10.0", "1.9.9" ) );
+        CHECK( Updater::IsNewer( "2", "1.9" ) );
+        CHECK( !Updater::IsNewer( "1.0", "1.0.0" ) );
+        CHECK( !Updater::IsNewer( "v1.0.0", "1.0.0" ) );
+        CHECK( !Updater::IsNewer( "1.0.0-beta", "1.0.0" ) );
     }
 }
 
@@ -153,6 +167,7 @@ int main()
     Kui::Tests::Lanes();
     Kui::Tests::Span();
     Kui::Tests::StoreRoundTrip();
+    Kui::Tests::Versions();
     std::printf( "All core tests passed\n" );
     return 0;
 }

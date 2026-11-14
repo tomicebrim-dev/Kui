@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 
 #include "Core/Layout.h"
@@ -28,7 +29,13 @@ namespace Kui::UI
         , m_reportTab( options.m_reportTab )
     {
         m_settings = m_store.LoadSettings();
+        m_settings.m_textScale = std::clamp( m_settings.m_textScale, g_minTextScale, g_maxTextScale );
+        ImGui::GetStyle().FontScaleMain = m_settings.m_textScale;
         m_autostart = m_isScreenshot || Platform::IsAutostartEnabled();
+        if( m_settings.m_checkUpdates && !m_isScreenshot )
+        {
+            CheckForUpdate();
+        }
         if( !m_settings.m_firstRunDone || options.m_showSetup )
         {
             m_setup = SetupState{ options.m_setupStep, Setup::Detect() };
@@ -171,6 +178,53 @@ namespace Kui::UI
         m_toast = Toast{ std::move( message ), ImGui::GetTime() };
     }
 
+    void App::CheckForUpdate()
+    {
+        if( m_updateCheck.valid() || m_updateInstall.valid() )
+        {
+            return;
+        }
+
+        m_updateStatus = "Checking for updates…";
+        m_updateCheck = std::async( std::launch::async, &Updater::FetchLatest );
+    }
+
+    void App::InstallUpdate()
+    {
+        if( !m_update.has_value() || m_updateInstall.valid() )
+        {
+            return;
+        }
+
+        m_updateStatus = std::format( "Downloading Kui {}…", m_update->m_version );
+        m_updateInstall = std::async( std::launch::async, &Updater::Install, *m_update );
+    }
+
+    void App::PollUpdate()
+    {
+        auto const isReady = []( auto const& future ) { return future.valid() && future.wait_for( std::chrono::seconds( 0 ) ) == std::future_status::ready; };
+        if( isReady( m_updateCheck ) )
+        {
+            std::optional<Updater::Release> const latest = m_updateCheck.get();
+            bool const isNewer = latest.has_value() && !latest->m_msiUrl.empty() && Updater::IsNewer( latest->m_version, Updater::CurrentVersion() );
+            m_update = isNewer ? latest : std::nullopt;
+            m_updateStatus = !latest.has_value() ? "Couldn't reach GitHub" : isNewer ? std::format( "Kui {} is available", latest->m_version ) : "Kui is up to date";
+        }
+
+        if( isReady( m_updateInstall ) )
+        {
+            if( m_updateInstall.get() )
+            {
+                // The installer replaces kui.exe and reopens it
+                PostQuitMessage( 0 );
+                return;
+            }
+
+            m_updateStatus = "Couldn't download the update";
+            ShowToast( m_updateStatus );
+        }
+    }
+
     void App::AddRule( std::string const& keyword, std::string const& description, std::string const& project )
     {
         std::string const k = Core::Trim( keyword );
@@ -244,7 +298,7 @@ namespace Kui::UI
 
     void App::HandleShortcuts()
     {
-        for( int i = 0; i < 4; i++ )
+        for( int i = 0; i < 5; i++ )
         {
             if( ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | static_cast<ImGuiKey>( ImGuiKey_1 + i ) ) )
             {
@@ -304,6 +358,7 @@ namespace Kui::UI
             }
         }
 
+        PollUpdate();
         if( m_setup.has_value() )
         {
             DrawSetup();
@@ -345,6 +400,12 @@ namespace Kui::UI
             case View::Programs:
             {
                 DrawPrograms();
+            }
+            break;
+
+            case View::Settings:
+            {
+                DrawSettings();
             }
             break;
         }

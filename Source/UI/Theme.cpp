@@ -72,6 +72,7 @@ namespace Kui::UI
     void ApplyStyle( float dpiScale )
     {
         ImGuiStyle& style = ImGui::GetStyle();
+        float const fontScale = style.FontScaleMain;
         style = ImGuiStyle();
         style.FontSizeBase = g_bodySize;
         style.WindowPadding = ImVec2( 0, 0 );
@@ -92,6 +93,7 @@ namespace Kui::UI
         style.PopupBorderSize = 1;
         style.ScaleAllSizes( dpiScale );
         style.FontScaleDpi = dpiScale;
+        style.FontScaleMain = fontScale;
 
         ImVec4* pColors = style.Colors;
         pColors[ImGuiCol_Text] = Vec( g_text );

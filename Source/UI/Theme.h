@@ -39,13 +39,15 @@ namespace Kui::UI
     constexpr float g_hourHeight = 64.0f;   // Calendar pixels per hour
     constexpr float g_gutter = 60.0f;       // Calendar hour-label column
     constexpr float g_bodySize = 14.5f;     // Default text size
+    constexpr float g_minTextScale = 0.8f;  // Text size setting range
+    constexpr float g_maxTextScale = 1.6f;
 
     //-------------------------------------------------------------------------
 
     // Segoe UI regular and semibold, with Segoe UI Symbol merged in for arrows and marks
     void LoadFonts();
 
-    // The dark theme, scaled for the monitor's DPI. Call again when the DPI changes.
+    // The dark theme, scaled for the monitor's DPI. Call again when the DPI changes. Keeps FontScaleMain (the text size setting).
     void ApplyStyle( float dpiScale );
 
     ImFont* GetRegularFont();
@@ -53,6 +55,9 @@ namespace Kui::UI
 
     // Logical pixels to screen pixels
     inline float Px( float v ) { return v * ImGui::GetStyle().FontScaleDpi; }
+
+    // Logical text size to screen pixels (includes the text size setting)
+    inline float FontPx( float size ) { return Px( size ) * ImGui::GetStyle().FontScaleMain; }
 
     // Same color, alpha multiplied by `alpha`
     ImU32 Fade( ImU32 color, float alpha );

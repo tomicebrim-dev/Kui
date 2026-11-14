@@ -2,6 +2,7 @@
 
 #include <compare>
 #include <cstdint>
+#include <future>
 #include <map>
 #include <optional>
 #include <set>
@@ -13,6 +14,7 @@
 #include "Core/Store.h"
 #include "Core/TimeUtil.h"
 #include "Setup/SetupDetection.h"
+#include "Updater/Updater.h"
 
 //-------------------------------------------------------------------------
 // The main window's state and every view. Each view lives in its own App_*.cpp file.
@@ -26,6 +28,7 @@ namespace Kui::UI
         Calendar,
         Reports,
         Programs,
+        Settings,
     };
 
     // How the window starts: the page to show and the test hooks
@@ -85,6 +88,13 @@ namespace Kui::UI
         void UndoDelete();
         void ShowToast( std::string message );
 
+        // Asks GitHub for the latest release in the background; PollUpdate() picks up the answer
+        void CheckForUpdate();
+
+        // Downloads and runs the newer release's installer in the background, then quits
+        void InstallUpdate();
+        void PollUpdate();
+
         // Adds a rule unless the keyword is empty or already tracked. Caller saves.
         void AddRule( std::string const& keyword, std::string const& description, std::string const& project );
 
@@ -107,6 +117,7 @@ namespace Kui::UI
         void DrawReports();
         void DrawPrograms();
         void DrawSetup();
+        void DrawSettings();
         void DrawToast();
 
         //-------------------------------------------------------------------------
@@ -182,5 +193,11 @@ namespace Kui::UI
         bool                                                m_suggestionsHovered = false;
         float                                               m_sideFooterHeight = 0.0f;
         std::optional<SetupState>                           m_setup;
+
+        // Updates
+        std::future<std::optional<Updater::Release>>        m_updateCheck;
+        std::future<bool>                                   m_updateInstall;
+        std::optional<Updater::Release>                     m_update;       // A newer release, once found
+        std::string                                         m_updateStatus;
     };
 }
