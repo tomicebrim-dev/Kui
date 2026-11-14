@@ -26,6 +26,7 @@ namespace Kui::UI
     App::App( Core::Store store, StartOptions const& options )
         : m_store( std::move( store ) )
         , m_isScreenshot( options.m_isScreenshot )
+        , m_isMini( options.m_isMini )
         , m_view( options.m_view )
         , m_reportTab( options.m_reportTab )
         , m_openSettings( options.m_showSettings )
@@ -34,11 +35,11 @@ namespace Kui::UI
         SetProjectColors( &m_settings.m_projectColors );
         m_settings.m_textScale = std::clamp( m_settings.m_textScale, g_minTextScale, g_maxTextScale );
         ImGui::GetStyle().FontScaleMain = m_settings.m_textScale;
-        if( m_settings.m_checkUpdates && !m_isScreenshot )
+        if( m_settings.m_checkUpdates && !m_isScreenshot && !m_isMini )
         {
             CheckForUpdate();
         }
-        if( !m_settings.m_firstRunDone || options.m_showSetup )
+        if( !m_isMini && ( !m_settings.m_firstRunDone || options.m_showSetup ) )
         {
             m_setup = SetupState{ options.m_setupStep, Setup::Detect() };
         }
@@ -400,6 +401,13 @@ namespace Kui::UI
             {
                 m_openPrograms = m_isScreenshot ? std::vector<std::string>{ "chrome", "Slack", "Spotify", "Code", "Notepad" } : Platform::OpenPrograms();
             }
+        }
+
+        if( m_isMini )
+        {
+            DrawMini();
+            ImGui::End();
+            return;
         }
 
         PollUpdate();

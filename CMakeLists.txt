@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(Kui VERSION 1.2.5 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
+project(Kui VERSION 1.3.2 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
 
 if(NOT WIN32)
   message(FATAL_ERROR "Kui is Windows-only (Win32 + Direct3D 11).")
@@ -59,6 +59,7 @@ add_executable(kui WIN32
   Source/UI/App.cpp
   Source/UI/App_Sidebar.cpp
   Source/UI/App_TopBar.cpp
+  Source/UI/App_Mini.cpp
   Source/UI/App_Entries.cpp
   Source/UI/App_Calendar.cpp
   Source/UI/App_Timeline.cpp

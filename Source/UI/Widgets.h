@@ -25,6 +25,8 @@ namespace Kui::UI
         Reports,
         Programs,
         Settings,
+        Pin,
+        Expand,
     };
 
     //-------------------------------------------------------------------------
@@ -71,8 +73,8 @@ namespace Kui::UI
     // The big round start/stop button
     bool PlayButton( bool running );
 
-    // 28px round icon button, painted (no glyph-font dependency)
-    bool IconButton( char const* pId, Icon icon, char const* pTooltip );
+    // 28px round icon button, painted (no glyph-font dependency). `active` tints it with the accent.
+    bool IconButton( char const* pId, Icon icon, char const* pTooltip, bool active = false );
 
     // Wrapped row of "+ name" pills. Returns the clicked name.
     std::optional<std::string> Chips( char const* pId, std::vector<std::string> const& names, char const* pEmptyText );

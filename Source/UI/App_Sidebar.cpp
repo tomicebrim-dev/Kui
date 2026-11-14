@@ -93,10 +93,11 @@ namespace Kui::UI
 
     void App::DrawSidebarBody()
     {
-        // Name, beside the rail's logo
+        // Name and version, beside the rail's logo
         ImDrawList* pDrawList = ImGui::GetWindowDrawList();
         ImVec2 const pos = ImGui::GetCursorScreenPos();
         TextAt( pDrawList, ImVec2( pos.x + Px( 4 ), pos.y + Px( 16 ) ), "Kui", 17.0f, g_text, true );
+        TextAt( pDrawList, ImVec2( pos.x + Px( 4 ) + TextWidth( "Kui", 17.0f, true ) + Px( 6 ), pos.y + Px( 17 ) ), std::format( "v{}", Updater::CurrentVersion() ), 12.5f, g_muted );
         ImGui::Dummy( ImVec2( Px( 32 ), Px( 32 ) ) );
         ImGui::Dummy( ImVec2( 0, Px( 10 ) ) );
 

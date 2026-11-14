@@ -40,6 +40,11 @@ namespace Kui
     constexpr float g_minWidth = 820.0f;
     constexpr float g_minHeight = 480.0f;
 
+    // The mini timer window, and the grip strip on its left that drags it
+    constexpr float g_miniWidth = 480.0f;
+    constexpr float g_miniHeight = 74.0f;
+    constexpr float g_miniGripWidth = 26.0f;
+
     // Frames kept running after input, so hovers and tooltips settle before going idle
     constexpr int g_busyFrames = 40;
 
@@ -62,6 +67,7 @@ namespace Kui
     {
         Core::Store const*      m_pStore = nullptr;
         bool                    m_isScreenshot = false;
+        bool                    m_isMini = false;
         UINT                    m_resizeWidth = 0;
         UINT                    m_resizeHeight = 0;
         bool                    m_openSettings = false;
@@ -168,8 +174,51 @@ namespace Kui
             }
             break;
 
+            case WM_NCHITTEST:
+            {
+                // Mini timer: its grip strip drags the borderless window
+                POINT pt = { static_cast<short>( LOWORD( lParam ) ), static_cast<short>( HIWORD( lParam ) ) };
+                ScreenToClient( hWnd, &pt );
+                if( pState != nullptr && pState->m_isMini && pt.x >= 0 && pt.x < static_cast<LONG>( g_miniGripWidth * DpiScale( hWnd ) ) )
+                {
+                    return HTCAPTION;
+                }
+            }
+            break;
+
+            case WM_CONTEXTMENU:
+            {
+                // Mini timer: right-click menu to close it without the tray
+                if( pState == nullptr || !pState->m_isMini )
+                {
+                    break;
+                }
+
+                POINT pt = { static_cast<short>( LOWORD( lParam ) ), static_cast<short>( HIWORD( lParam ) ) };
+                if( lParam == -1 )
+                {
+                    GetCursorPos( &pt );
+                }
+
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW( hMenu, MF_STRING, 1, L"Close mini timer" );
+                UINT const command = TrackPopupMenu( hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, nullptr );
+                DestroyMenu( hMenu );
+                if( command == 1 )
+                {
+                    DestroyWindow( hWnd );
+                }
+                return 0;
+            }
+            break;
+
             case WM_GETMINMAXINFO:
             {
+                if( pState != nullptr && pState->m_isMini )
+                {
+                    return 0;
+                }
+
                 float const scale = DpiScale( hWnd );
                 MINMAXINFO* pInfo = reinterpret_cast<MINMAXINFO*>( lParam );
                 pInfo->ptMinTrackSize.x = static_cast<LONG>( g_minWidth * scale );
@@ -213,7 +262,7 @@ namespace Kui
 
             case WM_DESTROY:
             {
-                if( pState != nullptr && !pState->m_isScreenshot )
+                if( pState != nullptr && !pState->m_isScreenshot && !pState->m_isMini )
                 {
                     SavePlacement( hWnd, *pState->m_pStore );
                 }
@@ -384,6 +433,8 @@ namespace Kui
 
         std::optional<std::wstring> const screenshot = argValue( L"--screenshot" );
         bool const isScreenshot = screenshot.has_value();
+        bool const isMini = hasArg( L"--mini" );
+        wchar_t const* const pWindowClass = isMini ? Platform::g_miniWindowClass : Platform::g_mainWindowClass;
         std::filesystem::path dir = Core::Store::DefaultDir();
         if( isScreenshot )
         {
@@ -399,8 +450,8 @@ namespace Kui
         }
         else
         {
-            // One window: a second launch just brings the first forward
-            if( Platform::FocusMainWindow() )
+            // One window (and one mini timer): a second launch just brings the first forward
+            if( isMini ? Platform::IsMiniTimerOpen() : Platform::FocusMainWindow() )
             {
                 return 0;
             }
@@ -415,6 +466,7 @@ namespace Kui
 
         UI::StartOptions options;
         options.m_isScreenshot = isScreenshot;
+        options.m_isMini = isMini;
         options.m_view = hasArg( L"--programs" ) ? UI::View::Programs : options.m_view;
         options.m_view = hasArg( L"--calendar" ) ? UI::View::Calendar : options.m_view;
         options.m_view = hasArg( L"--timeline" ) ? UI::View::Timeline : options.m_view;
@@ -432,7 +484,7 @@ namespace Kui
         wc.hInstance = hInstance;
         wc.hIcon = LoadIconW( hInstance, MAKEINTRESOURCEW( 1 ) );
         wc.hCursor = LoadCursorW( nullptr, IDC_ARROW );
-        wc.lpszClassName = Platform::g_mainWindowClass;
+        wc.lpszClassName = pWindowClass;
         RegisterClassExW( &wc );
 
         // --scale simulates Windows display scaling (screenshots default to 100%)
@@ -443,9 +495,26 @@ namespace Kui
             scale = scaleArg.has_value() ? std::stof( *scaleArg ) : 1.0f;
         }
 
-        RECT rect = { 0, 0, static_cast<LONG>( g_windowWidth * scale ), static_cast<LONG>( g_windowHeight * scale ) };
-        AdjustWindowRectExForDpi( &rect, WS_OVERLAPPEDWINDOW, FALSE, 0, GetDpiForSystem() );
-        HWND hWnd = CreateWindowExW( 0, Platform::g_mainWindowClass, L"Kui", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, hInstance, nullptr );
+        float const width = ( isMini ? g_miniWidth : g_windowWidth ) * scale;
+        float const height = ( isMini ? g_miniHeight : g_windowHeight ) * scale;
+        HWND hWnd = nullptr;
+        if( isMini )
+        {
+            // Borderless, always on top, no taskbar button; starts by the tray
+            Platform::UseDarkMenus();
+            RECT work;
+            SystemParametersInfoW( SPI_GETWORKAREA, 0, &work, 0 );
+            int const margin = static_cast<int>( 16 * scale );
+            hWnd = CreateWindowExW( WS_EX_TOPMOST | WS_EX_TOOLWINDOW, pWindowClass, L"Kui mini timer", WS_POPUP, work.right - static_cast<int>( width ) - margin, work.bottom - static_cast<int>( height ) - margin, static_cast<int>( width ), static_cast<int>( height ), nullptr, nullptr, hInstance, nullptr );
+            DWM_WINDOW_CORNER_PREFERENCE const corners = DWMWCP_ROUND;
+            DwmSetWindowAttribute( hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corners, sizeof( corners ) );
+        }
+        else
+        {
+            RECT rect = { 0, 0, static_cast<LONG>( width ), static_cast<LONG>( height ) };
+            AdjustWindowRectExForDpi( &rect, WS_OVERLAPPEDWINDOW, FALSE, 0, GetDpiForSystem() );
+            hWnd = CreateWindowExW( 0, pWindowClass, L"Kui", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, hInstance, nullptr );
+        }
 
         // Dark title bar in the app's colour, icon and buttons only (caption colour needs Windows 11)
         BOOL const dark = TRUE;
@@ -459,17 +528,18 @@ namespace Kui
         if( isScreenshot )
         {
             // Hidden window: size the client area exactly
-            SetWindowPos( hWnd, nullptr, 0, 0, static_cast<int>( g_windowWidth * scale ), static_cast<int>( g_windowHeight * scale ), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE );
+            SetWindowPos( hWnd, nullptr, 0, 0, static_cast<int>( width ), static_cast<int>( height ), SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE );
             RECT client;
             GetClientRect( hWnd, &client );
-            int const dx = static_cast<int>( g_windowWidth * scale ) - client.right;
-            int const dy = static_cast<int>( g_windowHeight * scale ) - client.bottom;
-            SetWindowPos( hWnd, nullptr, 0, 0, static_cast<int>( g_windowWidth * scale ) + dx, static_cast<int>( g_windowHeight * scale ) + dy, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE );
+            int const dx = static_cast<int>( width ) - client.right;
+            int const dy = static_cast<int>( height ) - client.bottom;
+            SetWindowPos( hWnd, nullptr, 0, 0, static_cast<int>( width ) + dx, static_cast<int>( height ) + dy, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE );
         }
 
         WindowState state;
         state.m_pStore = &store;
         state.m_isScreenshot = isScreenshot;
+        state.m_isMini = isMini;
         SetWindowLongPtrW( hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( &state ) );
 
         Graphics graphics;
@@ -481,7 +551,7 @@ namespace Kui
 
         if( !isScreenshot )
         {
-            ShowWindow( hWnd, RestorePlacement( hWnd, store ) );
+            ShowWindow( hWnd, isMini ? SW_SHOWNORMAL : RestorePlacement( hWnd, store ) );
             UpdateWindow( hWnd );
             scale = DpiScale( hWnd );   // The restored position may be on another monitor
         }
@@ -563,7 +633,7 @@ namespace Kui
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
         DestroyWindow( hWnd );
-        UnregisterClassW( Platform::g_mainWindowClass, hInstance );
+        UnregisterClassW( pWindowClass, hInstance );
         return result;
     }
 }

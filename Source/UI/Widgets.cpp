@@ -378,10 +378,34 @@ namespace Kui::UI
                 pDrawList->AddCircle( c, Px( 5.5f ), color, 0, Px( 2.2f ) );
             }
             break;
+
+            case Icon::Pin:
+            {
+                // Push pin: head, collar and needle
+                pDrawList->AddRectFilled( ImVec2( c.x - Px( 3.5f ), c.y - Px( 8 ) ), ImVec2( c.x + Px( 3.5f ), c.y - Px( 1 ) ), color, Px( 1.5f ) );
+                pDrawList->AddLine( ImVec2( c.x - Px( 6.5f ), c.y - Px( 0.5f ) ), ImVec2( c.x + Px( 6.5f ), c.y - Px( 0.5f ) ), color, Px( 2 ) );
+                pDrawList->AddLine( ImVec2( c.x, c.y ), ImVec2( c.x, c.y + Px( 8 ) ), color, Px( 1.6f ) );
+            }
+            break;
+
+            case Icon::Expand:
+            {
+                // Two arrows pointing out to opposite corners
+                float const r = Px( 7 );
+                float const head = Px( 4.5f );
+                for( float const s : { 1.0f, -1.0f } )
+                {
+                    ImVec2 const tip( c.x + s * r, c.y - s * r );
+                    pDrawList->AddLine( ImVec2( c.x + s * Px( 1.5f ), c.y - s * Px( 1.5f ) ), tip, color, Px( 1.6f ) );
+                    pDrawList->AddLine( tip, ImVec2( tip.x - s * head, tip.y ), color, Px( 1.6f ) );
+                    pDrawList->AddLine( tip, ImVec2( tip.x, tip.y + s * head ), color, Px( 1.6f ) );
+                }
+            }
+            break;
         }
     }
 
-    bool IconButton( char const* pId, Icon icon, char const* pTooltip )
+    bool IconButton( char const* pId, Icon icon, char const* pTooltip, bool active )
     {
         ImVec2 const pos = ImGui::GetCursorScreenPos();
         float const size = Px( 28 );
@@ -389,7 +413,7 @@ namespace Kui::UI
         bool const hovered = ImGui::IsItemHovered();
         ImVec2 const c( pos.x + size / 2, pos.y + size / 2 );
 
-        ImU32 color = Fade( g_text, 0.8f );
+        ImU32 color = active ? g_accent : Fade( g_text, 0.8f );
         if( hovered )
         {
             color = ( icon == Icon::Delete ) ? g_red : g_accent;

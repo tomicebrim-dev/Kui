@@ -327,6 +327,42 @@ namespace Kui::Platform
         }
     }
 
+    // ponytail: undocumented uxtheme ordinals 135/136 (Win10 1903+), owner-drawn menus if they ever go away
+    void UseDarkMenus()
+    {
+        HMODULE const hUxTheme = LoadLibraryExW( L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32 );
+        if( hUxTheme == nullptr )
+        {
+            return;
+        }
+
+        using SetPreferredAppMode = int( WINAPI* )( int );
+        using FlushMenuThemes = void( WINAPI* )();
+        auto const pSetMode = reinterpret_cast<SetPreferredAppMode>( GetProcAddress( hUxTheme, MAKEINTRESOURCEA( 135 ) ) );
+        auto const pFlush = reinterpret_cast<FlushMenuThemes>( GetProcAddress( hUxTheme, MAKEINTRESOURCEA( 136 ) ) );
+        if( pSetMode != nullptr && pFlush != nullptr )
+        {
+            pSetMode( 2 );  // ForceDark
+            pFlush();
+        }
+    }
+
+    bool IsMiniTimerOpen()
+    {
+        return FindWindowW( g_miniWindowClass, nullptr ) != nullptr;
+    }
+
+    void ToggleMiniTimer()
+    {
+        HWND const hWnd = FindWindowW( g_miniWindowClass, nullptr );
+        if( hWnd != nullptr )
+        {
+            PostMessageW( hWnd, WM_CLOSE, 0, 0 );
+            return;
+        }
+        ShellExecuteW( nullptr, nullptr, ExePath().c_str(), L"--mini", nullptr, SW_SHOWNORMAL );
+    }
+
     void RevealInExplorer( std::filesystem::path const& file )
     {
         std::wstring const args = L"/select,\"" + file.wstring() + L"\"";

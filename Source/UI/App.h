@@ -35,6 +35,7 @@ namespace Kui::UI
     struct StartOptions
     {
         bool    m_isScreenshot = false;     // Demo data, no writes to the real settings or Run key
+        bool    m_isMini = false;           // The small always-on-top timer window instead of the full app
         View    m_view = View::Timer;
         int     m_reportTab = 0;            // 0 = Summary, 1 = Workload
         bool    m_showSetup = false;
@@ -117,6 +118,9 @@ namespace Kui::UI
         void DrawSidebarBody();
         void DrawSidebarFooter();
         void DrawTopBar();
+
+        // The whole mini timer window: grip, description, project, clock, start/stop, pin, expand
+        void DrawMini();
         bool DrawWatchButton();
         void DrawSuggestions();
         void DrawEntries();
@@ -180,6 +184,8 @@ namespace Kui::UI
 
         Core::Store                                         m_store;
         bool                                                m_isScreenshot = false;
+        bool                                                m_isMini = false;
+        bool                                                m_miniPinned = true;    // Mini timer stays on top
 
         // Files
         Core::Settings                                      m_settings;

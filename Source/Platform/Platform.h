@@ -20,6 +20,9 @@ namespace Kui::Platform
     // Window class of the main window, so a second launch can find and focus it
     constexpr wchar_t g_mainWindowClass[] = L"KuiMainWindow";
 
+    // Window class of the always-on-top mini timer (`kui.exe --mini`)
+    constexpr wchar_t g_miniWindowClass[] = L"KuiMiniTimer";
+
     // Posted to the main window to open its settings popup
     constexpr UINT g_openSettingsMessage = WM_APP + 10;
 
@@ -73,6 +76,15 @@ namespace Kui::Platform
 
     // Focuses the main window, or starts it when it isn't open. `settings` also opens the settings popup.
     void OpenApp( bool settings = false );
+
+    // Makes this process's popup menus dark
+    void UseDarkMenus();
+
+    // True while the mini timer window is open
+    bool IsMiniTimerOpen();
+
+    // Closes the mini timer if it's open, starts it otherwise
+    void ToggleMiniTimer();
 
     // Opens Explorer with the file selected
     void RevealInExplorer( std::filesystem::path const& file );
