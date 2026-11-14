@@ -61,6 +61,7 @@ add_executable(kui WIN32
   Source/UI/App_TopBar.cpp
   Source/UI/App_Entries.cpp
   Source/UI/App_Calendar.cpp
+  Source/UI/App_Timeline.cpp
   Source/UI/App_Reports.cpp
   Source/UI/App_Programs.cpp
   Source/UI/App_Setup.cpp

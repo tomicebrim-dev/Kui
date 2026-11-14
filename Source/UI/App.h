@@ -26,6 +26,7 @@ namespace Kui::UI
     {
         Timer,
         Calendar,
+        Timeline,
         Reports,
         Programs,
     };
@@ -85,6 +86,9 @@ namespace Kui::UI
         void Stop();
         void Toggle();
         void Delete( std::vector<Core::Entry> entries );
+
+        // Puts entries on another project; undoable like a delete
+        void MoveToProject( std::vector<Core::Entry> entries, std::string const& project );
         void UndoDelete();
         void ShowToast( std::string message );
 
@@ -115,6 +119,7 @@ namespace Kui::UI
         void DrawEntries();
         void DrawWeekNav( Core::Day today );
         void DrawCalendar();
+        void DrawTimeline();
         void DrawReports();
         void DrawPrograms();
         void DrawSetup();
@@ -144,6 +149,18 @@ namespace Kui::UI
         {
             std::vector<Core::Entry>    m_entries;
             double                      m_time = 0;
+            bool                        m_replace = false;  // Drop the matching entries first (undoing a move, not a delete)
+        };
+
+        // A timeline bar being dragged onto another project's row
+        struct TimelineDrag
+        {
+            std::vector<Core::Entry>    m_entries;          // Copies, so a reload mid-drag leaves nothing dangling
+            std::string                 m_project;
+            std::string                 m_label;
+            Core::Day                   m_from = 0;         // The bar's first day
+            float                       m_grabX = 0.0f;     // Mouse x within the bar
+            float                       m_width = 0.0f;
         };
 
         struct Toast
@@ -186,6 +203,9 @@ namespace Kui::UI
         int                                                 m_week = 0;
         int                                                 m_calendarDays = 7;
         bool                                                m_calendarScrolled = false;
+        int                                                 m_timelineWeeks = 2;
+        bool                                                m_timelineByActivity = false;   // Rows per activity instead of per project
+        std::optional<TimelineDrag>                         m_timelineDrag;
         int                                                 m_reportTab = 0;
         std::set<GroupKey>                                  m_expanded;
         std::set<Core::Day>                                 m_collapsedDays;    // Day headers folded shut

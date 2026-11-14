@@ -161,11 +161,37 @@ namespace Kui::UI
         Reload( true );
     }
 
+    void App::MoveToProject( std::vector<Core::Entry> entries, std::string const& project )
+    {
+        // RewriteEntries sets one description per call
+        std::map<std::string, std::vector<Core::Entry>> byDescription;
+        for( Core::Entry const& entry : entries )
+        {
+            byDescription[entry.m_description].push_back( entry );
+        }
+
+        for( auto const& [description, group] : byDescription )
+        {
+            m_store.RewriteEntries( {}, group, description, project );
+        }
+
+        std::string const target = project.empty() ? "No project" : project;
+        ShowToast( entries.size() == 1 ? "Entry moved to " + target : std::format( "{} entries moved to {}", entries.size(), target ) );
+        m_undo = Undo{ std::move( entries ), m_toast->m_time, true };
+        Reload( true );
+    }
+
     void App::UndoDelete()
     {
         if( !m_undo.has_value() )
         {
             return;
+        }
+
+        // Entries match by time and description, not project, so this drops the moved copies
+        if( m_undo->m_replace )
+        {
+            m_store.RewriteEntries( m_undo->m_entries, {}, "", "" );
         }
 
         for( Core::Entry const& entry : m_undo->m_entries )
@@ -313,14 +339,14 @@ namespace Kui::UI
 
     void App::HandleShortcuts()
     {
-        for( int i = 0; i < 4; i++ )
+        for( int i = 0; i < 5; i++ )
         {
             if( ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | static_cast<ImGuiKey>( ImGuiKey_1 + i ) ) )
             {
                 m_view = static_cast<View>( i );
             }
         }
-        m_openSettings |= ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | ImGuiKey_5 );
+        m_openSettings |= ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | ImGuiKey_6 );
 
         bool const undo = ImGui::IsKeyChordPressed( ImGuiMod_Ctrl | ImGuiKey_Z );
         bool toggle = false;
@@ -334,7 +360,7 @@ namespace Kui::UI
             nav = ImGui::IsKeyChordPressed( ImGuiKey_T ) ? 2 : nav;
         }
 
-        if( m_view == View::Calendar || m_view == View::Reports )
+        if( m_view == View::Calendar || m_view == View::Timeline || m_view == View::Reports )
         {
             m_week = ( nav == 2 ) ? 0 : m_week + nav;
         }
@@ -408,6 +434,12 @@ namespace Kui::UI
             case View::Calendar:
             {
                 DrawCalendar();
+            }
+            break;
+
+            case View::Timeline:
+            {
+                DrawTimeline();
             }
             break;
 

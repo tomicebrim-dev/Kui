@@ -94,6 +94,13 @@ namespace Kui::Tests
         CHECK( Core::Lanes( { { 0, 10 }, { 5, 20 }, { 12, 15 }, { 30, 40 } } ) == expected );
     }
 
+    static void Runs()
+    {
+        std::vector<std::pair<size_t, size_t>> const expected = { { 1, 2 }, { 5, 5 } };
+        CHECK( Core::Runs( { 0, 5, 3, 0, 0, 2 } ) == expected );
+        CHECK( Core::Runs( { 0, 0 } ).empty() );
+    }
+
     static void Span()
     {
         std::vector<Core::Entry> const entries = { MakeEntry( 500000, 500100 ), MakeEntry( 200000, 200050 ), MakeEntry( 99990, 100010 ), MakeEntry( 10, 20 ) };
@@ -273,6 +280,7 @@ int main()
     Kui::Tests::Recent();
     Kui::Tests::Vdf();
     Kui::Tests::Lanes();
+    Kui::Tests::Runs();
     Kui::Tests::Span();
     Kui::Tests::StoreRoundTrip();
     Kui::Tests::Versions();

@@ -323,6 +323,14 @@ namespace Kui
             entry( 2 * 86400 + 3000 - k * 240, 100 + k % 4 * 40, activities[k % 3][0], activities[k % 3][1], true );
         }
 
+        // Older days, so the timeline has history
+        char const* const older[4][2] = { { "Programming", "Website" }, { "Budget planning", "Finance" }, { "Design work", "Website" }, { "Email", "Admin" } };
+        for( int64_t day = 4; day < 13; day++ )
+        {
+            entry( day * 86400 + 20000, 3600 + day % 3 * 1800, older[day / 3 % 4][0], older[day / 3 % 4][1], true );
+            entry( day * 86400 + 9000, 2400, older[3][0], older[3][1], true );
+        }
+
         store.SaveTimer( Core::Timer{ t - 1534, "Programming", "Website", 1 } );
         store.SaveStatus( Core::Status{ t, "Code", "main.rs - website" } );
         store.SaveRecent( { "Discord", "Photoshop", "Teams" } );
@@ -396,6 +404,7 @@ namespace Kui
         options.m_isScreenshot = isScreenshot;
         options.m_view = hasArg( L"--programs" ) ? UI::View::Programs : options.m_view;
         options.m_view = hasArg( L"--calendar" ) ? UI::View::Calendar : options.m_view;
+        options.m_view = hasArg( L"--timeline" ) ? UI::View::Timeline : options.m_view;
         options.m_showSettings = hasArg( L"--settings" );
         options.m_view = ( hasArg( L"--reports" ) || hasArg( L"--workload" ) ) ? UI::View::Reports : options.m_view;
         options.m_reportTab = hasArg( L"--workload" ) ? 1 : 0;

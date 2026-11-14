@@ -72,4 +72,26 @@ namespace Kui::Core
         closeCluster( spans.size() );
         return out;
     }
+
+    std::vector<std::pair<size_t, size_t>> Runs( std::vector<int64_t> const& values )
+    {
+        std::vector<std::pair<size_t, size_t>> out;
+        for( size_t i = 0; i < values.size(); i++ )
+        {
+            if( values[i] == 0 )
+            {
+                continue;
+            }
+
+            if( !out.empty() && out.back().second + 1 == i )
+            {
+                out.back().second = i;
+            }
+            else
+            {
+                out.emplace_back( i, i );
+            }
+        }
+        return out;
+    }
 }

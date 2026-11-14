@@ -48,8 +48,9 @@ namespace Kui::UI
         {
             { View::Timer, Icon::Timer, "timer", "Timer  Ctrl+1" },
             { View::Calendar, Icon::Calendar, "calendar", "Calendar  Ctrl+2" },
-            { View::Reports, Icon::Reports, "reports", "Reports  Ctrl+3" },
-            { View::Programs, Icon::Programs, "programs", "Programs  Ctrl+4" },
+            { View::Timeline, Icon::Timeline, "timeline", "Timeline  Ctrl+3" },
+            { View::Reports, Icon::Reports, "reports", "Reports  Ctrl+4" },
+            { View::Programs, Icon::Programs, "programs", "Programs  Ctrl+5" },
         };
 
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( Px( 8 ), Px( 6 ) ) );
@@ -64,7 +65,7 @@ namespace Kui::UI
 
         // Settings pinned to the bottom; opens the settings popup
         ImGui::SetCursorPosY( ImGui::GetWindowHeight() - Px( 16 ) - Px( 40 ) );
-        m_openSettings |= RailItem( "settings", Icon::Settings, "Settings  Ctrl+5", m_settingsOpen );
+        m_openSettings |= RailItem( "settings", Icon::Settings, "Settings  Ctrl+6", m_settingsOpen );
         ImGui::EndChild();
     }
 
@@ -236,6 +237,6 @@ namespace Kui::UI
 
         ImGui::SameLine( 0, Px( 14 ) );
         FlatButton( "keys", "Keys" );
-        ImGui::SetItemTooltip( "Ctrl+1–4  switch page\nCtrl+5  settings\nN  type what you're doing\nS  start / stop timer\n← →  previous / next week\nT  back to this week\nCtrl+Z  undo delete\nEsc  cancel edit" );
+        ImGui::SetItemTooltip( "Ctrl+1–5  switch page\nCtrl+6  settings\nN  type what you're doing\nS  start / stop timer\n← →  previous / next week\nT  back to this week\nCtrl+Z  undo delete / move\nEsc  cancel edit" );
     }
 }

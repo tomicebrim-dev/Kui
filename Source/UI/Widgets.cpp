@@ -326,6 +326,19 @@ namespace Kui::UI
             }
             break;
 
+            case Icon::Timeline:
+            {
+                // Gantt chart: three staggered bars
+                float const lefts[] = { -8.0f, -3.0f, -6.0f };
+                float const rights[] = { 1.0f, 8.0f, 4.0f };
+                for( int i = 0; i < 3; i++ )
+                {
+                    float const y = c.y + Px( static_cast<float>( i - 1 ) * 5.5f );
+                    pDrawList->AddRectFilled( ImVec2( c.x + Px( lefts[i] ), y - Px( 1.75f ) ), ImVec2( c.x + Px( rights[i] ), y + Px( 1.75f ) ), color, Px( 1.75f ) );
+                }
+            }
+            break;
+
             case Icon::Reports:
             {
                 // Three bars on a baseline

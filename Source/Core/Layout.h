@@ -17,4 +17,7 @@ namespace Kui::Core
 
     // Greedy lane packing. `spans` sorted by start; returns (lane, lanes in its overlap cluster) per span.
     std::vector<std::pair<size_t, size_t>> Lanes( std::vector<std::pair<int64_t, int64_t>> const& spans );
+
+    // Runs of consecutive non-zero values, as (first, last) index pairs. Timeline bars are runs of tracked days.
+    std::vector<std::pair<size_t, size_t>> Runs( std::vector<int64_t> const& values );
 }

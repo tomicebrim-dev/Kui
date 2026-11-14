@@ -21,6 +21,7 @@ namespace Kui::UI
         Delete,
         Timer,
         Calendar,
+        Timeline,
         Reports,
         Programs,
         Settings,
