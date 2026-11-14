@@ -1,0 +1,158 @@
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <format>
+#include <string>
+#include <vector>
+
+#include <windows.h>
+
+#include "Core/Layout.h"
+#include "Core/Store.h"
+#include "Core/TimeUtil.h"
+#include "Setup/SetupDetection.h"
+
+//-------------------------------------------------------------------------
+// Core logic checks, no framework: a failed CHECK prints the line and exits non-zero. Run by ctest.
+//-------------------------------------------------------------------------
+
+#define CHECK( expr ) \
+    do \
+    { \
+        if( !( expr ) ) \
+        { \
+            std::printf( "FAILED %s:%d  %s\n", __FILE__, __LINE__, #expr ); \
+            std::exit( 1 ); \
+        } \
+    } \
+    while( false )
+
+namespace Kui::Tests
+{
+    static Core::Rule MakeRule( char const* pKeyword, Core::Mode mode )
+    {
+        Core::Rule rule;
+        rule.m_id = 1;
+        rule.m_keyword = pKeyword;
+        rule.m_mode = mode;
+        return rule;
+    }
+
+    static Core::Entry MakeEntry( int64_t start, int64_t end, char const* pDescription = "", char const* pProject = "" )
+    {
+        return Core::Entry{ start, end, pDescription, pProject, false };
+    }
+
+    //-------------------------------------------------------------------------
+
+    static void Matching()
+    {
+        std::vector<Core::Rule> rules = { MakeRule( "visual studio", Core::Mode::Phrase ) };
+        CHECK( Core::FindRule( rules, "devenv", "Solution1 - Microsoft Visual Studio" ) != nullptr );
+        CHECK( Core::FindRule( rules, "Code", "studio visual" ) == nullptr );
+
+        rules = { MakeRule( "studio visual", Core::Mode::AllWords ) };
+        CHECK( Core::FindRule( rules, "devenv", "Microsoft Visual Studio" ) != nullptr );
+
+        rules = { MakeRule( "  ", Core::Mode::Phrase ) };
+        CHECK( Core::FindRule( rules, "a", "b" ) == nullptr );
+
+        rules = { MakeRule( "code", Core::Mode::Phrase ) };
+        rules[0].m_enabled = false;
+        CHECK( Core::FindRule( rules, "Code", "" ) == nullptr );
+    }
+
+    static void Recent()
+    {
+        std::vector<std::string> list;
+        CHECK( Core::Store::BumpRecent( list, "a" ) && Core::Store::BumpRecent( list, "b" ) && Core::Store::BumpRecent( list, "a" ) );
+        CHECK( !Core::Store::BumpRecent( list, "a" ) && !Core::Store::BumpRecent( list, "" ) );
+        CHECK( ( list == std::vector<std::string>{ "a", "b" } ) );
+        for( int i = 0; i < 30; i++ )
+        {
+            Core::Store::BumpRecent( list, std::to_string( i ) );
+        }
+        CHECK( list.size() == Core::Store::s_recentMax );
+    }
+
+    static void Vdf()
+    {
+        std::string const text = "\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"\t\t\"D:\\\\SteamLibrary\"\n\t\t\"label\"\t\t\"\"\n\t}\n}";
+        CHECK( ( Setup::VdfValues( text, "path" ) == std::vector<std::string>{ "D:\\SteamLibrary" } ) );
+        CHECK( ( Setup::VdfValues( "\t\"name\"\t\t\"Hades II\"", "name" ) == std::vector<std::string>{ "Hades II" } ) );
+        CHECK( Setup::VdfValues( "\"libraryfolders\"", "path" ).empty() );
+    }
+
+    static void Lanes()
+    {
+        // a,b overlap -> 2 lanes; c overlaps b only (a ended) -> reuses lane 0; d is its own cluster
+        std::vector<std::pair<size_t, size_t>> const expected = { { 0, 2 }, { 1, 2 }, { 0, 2 }, { 0, 1 } };
+        CHECK( Core::Lanes( { { 0, 10 }, { 5, 20 }, { 12, 15 }, { 30, 40 } } ) == expected );
+    }
+
+    static void Span()
+    {
+        std::vector<Core::Entry> const entries = { MakeEntry( 500000, 500100 ), MakeEntry( 200000, 200050 ), MakeEntry( 99990, 100010 ), MakeEntry( 10, 20 ) };
+        std::vector<Core::Entry const*> const found = Core::Span( entries, 100000, 300000 );
+        CHECK( found.size() == 2 && found[0]->m_start == 200000 && found[1]->m_start == 99990 );
+        CHECK( Core::Span( entries, 600000, 700000 ).empty() );
+    }
+
+    // Rename and delete through the real files, in a temp folder
+    static void StoreRoundTrip()
+    {
+        std::filesystem::path const dir = std::filesystem::temp_directory_path() / std::format( "kui-test-{}", GetCurrentProcessId() );
+        std::filesystem::remove_all( dir );
+        Core::Store const store( dir );
+
+        int64_t const t = Core::DayStart( Core::DayOf( Core::Now() ) ) + 3600;
+        std::vector<Core::Entry> const entries = { MakeEntry( t, t + 60, "a", "P" ), MakeEntry( t + 100, t + 160, "b", "P" ), MakeEntry( t + 200, t + 260, "a", "P" ) };
+        for( Core::Entry const& entry : entries )
+        {
+            store.AppendEntry( entry );
+        }
+        CHECK( store.LoadEntries().size() == 3 );
+
+        // Rename both "a" pieces
+        store.RewriteEntries( {}, { entries[0], entries[2] }, "c", "Q" );
+        std::vector<Core::Entry> loaded = store.LoadEntries();
+        CHECK( loaded.size() == 3 );
+        CHECK( loaded[0].m_description == "c" && loaded[0].m_project == "Q" && loaded[1].m_description == "b" && loaded[2].m_description == "c" );
+
+        // Delete one, then put it back (what undo does)
+        store.RewriteEntries( { loaded[1] }, {}, "", "" );
+        CHECK( store.LoadEntries().size() == 2 );
+        store.AppendEntry( loaded[1] );
+        CHECK( store.LoadEntries().size() == 3 );
+
+        // Timer start/stop logs an entry
+        store.StartTimer( Core::Timer{ t + 1000, "run", "", std::nullopt } );
+        CHECK( store.LoadTimer().has_value() );
+        store.StopTimer( t + 1300 );
+        CHECK( !store.LoadTimer().has_value() );
+        loaded = store.LoadEntries();
+        CHECK( loaded.size() == 4 && loaded.back().m_description == "run" && loaded.back().m_end - loaded.back().m_start == 300 );
+
+        // Settings round trip
+        Core::Settings settings;
+        settings.m_rules = { MakeRule( "excel budget", Core::Mode::AllWords ) };
+        settings.m_workHours = 7.5f;
+        store.SaveSettings( settings );
+        Core::Settings const back = store.LoadSettings();
+        CHECK( back.m_rules.size() == 1 && back.m_rules[0].m_mode == Core::Mode::AllWords && back.m_workHours == 7.5f );
+
+        std::filesystem::remove_all( dir );
+    }
+}
+
+int main()
+{
+    Kui::Tests::Matching();
+    Kui::Tests::Recent();
+    Kui::Tests::Vdf();
+    Kui::Tests::Lanes();
+    Kui::Tests::Span();
+    Kui::Tests::StoreRoundTrip();
+    std::printf( "All core tests passed\n" );
+    return 0;
+}

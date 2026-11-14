@@ -1,0 +1,27 @@
+#include <winver.h>
+
+// Icon ID 1: the window, tray and installer all use it
+1 ICON "@CMAKE_CURRENT_SOURCE_DIR@/Resources/Kui.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+PRODUCTVERSION  @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "Kui - automatic time tracker"
+            VALUE "FileVersion", "@PROJECT_VERSION@"
+            VALUE "ProductName", "Kui"
+            VALUE "ProductVersion", "@PROJECT_VERSION@"
+            VALUE "OriginalFilename", "kui.exe"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

@@ -1,0 +1,36 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <!-- Per-user: no UAC prompt, installs to %LOCALAPPDATA%\Programs\Kui. Built by the CMake 'msi' target. -->
+  <Package Name="Kui" Manufacturer="Kui" Version="$(Version)"
+           UpgradeCode="BADDA7B5-B537-4000-B03D-583C33705D03" Scope="perUser">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Kui is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="KuiIcon" SourceFile="$(Icon)" />
+    <Property Id="ARPPRODUCTICON" Value="KuiIcon" />
+
+    <!-- Tracker runs in the tray from sign-in; close it so the exe can be replaced/removed. -->
+    <util:CloseApplication Id="CloseTracker" Target="kui.exe" CloseMessage="yes"
+                           TerminateProcess="1" RebootPrompt="no" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsDir" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Kui">
+          <Component Guid="B4FA4343-A3B1-4B64-BBFE-CED1200FB5EF">
+            <!-- Per-user component: HKCU KeyPath + RemoveFolder (ICE38/64). -->
+            <File Id="MainExe" Source="$(Exe)" Name="kui.exe" />
+            <RemoveFolder Id="RmInstall" Directory="INSTALLFOLDER" On="uninstall" />
+            <RemoveFolder Id="RmPrograms" Directory="ProgramsDir" On="uninstall" />
+            <RegistryValue Root="HKCU" Key="Software\Kui" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+            <Shortcut Directory="ProgramMenuFolder" Name="Kui" Target="[#MainExe]" WorkingDirectory="INSTALLFOLDER" Icon="KuiIcon" />
+            <!-- Owned by the MSI so uninstall removes it; the app toggles it at runtime. -->
+            <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                           Name="Kui" Type="string" Value="&quot;[#MainExe]&quot; --tracker" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder" />
+  </Package>
+</Wix>
