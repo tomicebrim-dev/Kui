@@ -103,27 +103,49 @@ namespace Kui::Core
     // Rules
     //-------------------------------------------------------------------------
 
+    std::vector<std::string> Rule::Keywords() const
+    {
+        std::vector<std::string> keywords;
+        std::string const all = ToLower( m_keyword );
+        size_t start = 0;
+        while( start <= all.size() )
+        {
+            size_t const comma = std::min( all.find( ',', start ), all.size() );
+            std::string const keyword = Trim( std::string_view( all ).substr( start, comma - start ) );
+            if( !keyword.empty() )
+            {
+                keywords.push_back( keyword );
+            }
+            start = comma + 1;
+        }
+        return keywords;
+    }
+
     bool Rule::Matches( std::string const& textLower ) const
     {
-        std::string const keyword = ToLower( Trim( m_keyword ) );
-        if( !m_enabled || keyword.empty() )
+        if( !m_enabled )
         {
             return false;
         }
 
-        if( m_mode == Mode::Phrase )
+        for( std::string const& keyword : Keywords() )
         {
-            return Contains( textLower, keyword );
-        }
-
-        for( std::string const& word : SplitWhitespace( keyword ) )
-        {
-            if( !Contains( textLower, word ) )
+            if( m_mode == Mode::Phrase )
             {
-                return false;
+                if( Contains( textLower, keyword ) )
+                {
+                    return true;
+                }
+                continue;
+            }
+
+            std::vector<std::string> const words = SplitWhitespace( keyword );
+            if( std::ranges::all_of( words, [&]( std::string const& word ) { return Contains( textLower, word ); } ) )
+            {
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     std::string Rule::Label() const

@@ -58,6 +58,13 @@ namespace Kui::Tests
         rules = { MakeRule( "studio visual", Core::Mode::AllWords ) };
         CHECK( Core::FindRule( rules, "devenv", "Microsoft Visual Studio" ) != nullptr );
 
+        // Comma-separated alternatives: any one matches
+        rules = { MakeRule( "YouTube, twitch ,, studio visual", Core::Mode::AllWords ) };
+        CHECK( Core::FindRule( rules, "chrome", "Cats - YouTube" ) != nullptr );
+        CHECK( Core::FindRule( rules, "firefox", "Twitch" ) != nullptr );
+        CHECK( Core::FindRule( rules, "devenv", "Visual Studio" ) != nullptr );
+        CHECK( Core::FindRule( rules, "chrome", "Netflix" ) == nullptr );
+
         rules = { MakeRule( "  ", Core::Mode::Phrase ) };
         CHECK( Core::FindRule( rules, "a", "b" ) == nullptr );
 

@@ -149,7 +149,8 @@ namespace Kui::UI
             ImGui::EndDisabled();
 
             // Only multi-word keywords have a matching choice worth showing
-            if( Core::SplitWhitespace( rule.m_keyword ).size() > 1 )
+            std::vector<std::string> const keywords = rule.Keywords();
+            if( std::ranges::any_of( keywords, []( std::string const& k ) { return Core::SplitWhitespace( k ).size() > 1; } ) )
             {
                 float const comboWidth = Px( 130 );
                 x -= comboWidth + spacing;
@@ -173,12 +174,17 @@ namespace Kui::UI
                 }
             }
 
-            float const half = ( ImGui::GetContentRegionAvail().x - Px( 14 ) ) / 2;
-            ImGui::SetNextItemWidth( half );
+            // Comma-separated alternatives, e.g. "youtube, twitch" in one browser rule
+            float const third = ( ImGui::GetContentRegionAvail().x - Px( 28 ) ) / 3;
+            ImGui::SetNextItemWidth( third );
+            changed |= ImGui::InputTextWithHint( "##keywords", "Keywords, e.g. youtube, twitch", &rule.m_keyword );
+            ImGui::SetItemTooltip( "Tracked while the program name or window title contains any of these (comma-separated)" );
+            ImGui::SameLine( 0, Px( 14 ) );
+            ImGui::SetNextItemWidth( third );
             std::string const hint = "Entry name (default: " + Core::Trim( rule.m_keyword ) + ")";
             changed |= ImGui::InputTextWithHint( "##description", hint.c_str(), &rule.m_description );
             ImGui::SameLine( 0, Px( 14 ) );
-            changed |= ProjectField( "project", rule.m_project, half / Px( 1 ), m_projects, &m_settings.m_projectColors );
+            changed |= ProjectField( "project", rule.m_project, third / Px( 1 ), m_projects, &m_settings.m_projectColors );
 
             EndCard();
             ImGui::PopID();

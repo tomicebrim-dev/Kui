@@ -28,7 +28,10 @@ namespace Kui::Core
     {
         public:
 
-        // Does this rule match the lower-cased "<program> <title>"? Disabled or blank rules never match.
+        // Lower-cased, trimmed keywords; the keyword text holds comma-separated alternatives
+        std::vector<std::string> Keywords() const;
+
+        // Does this rule match any keyword in the lower-cased "<program> <title>"? Disabled or blank rules never match.
         bool Matches( std::string const& textLower ) const;
 
         // The entry name: the description, or the keyword when that is blank
