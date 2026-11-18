@@ -257,6 +257,7 @@ namespace Kui::Core
         Get( *j, "idle_minutes", s.m_idleMinutes );
         Get( *j, "first_run_done", s.m_firstRunDone );
         Get( *j, "work_hours", s.m_workHours );
+        Get( *j, "work_days", s.m_workDays );
         Get( *j, "text_scale", s.m_textScale );
         Get( *j, "check_updates", s.m_checkUpdates );
         Get( *j, "autostart", s.m_autostart );
@@ -289,6 +290,7 @@ namespace Kui::Core
         j["idle_minutes"] = s.m_idleMinutes;
         j["first_run_done"] = s.m_firstRunDone;
         j["work_hours"] = s.m_workHours;
+        j["work_days"] = s.m_workDays;
         j["text_scale"] = s.m_textScale;
         j["check_updates"] = s.m_checkUpdates;
         j["autostart"] = s.m_autostart;

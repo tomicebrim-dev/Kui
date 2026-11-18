@@ -10,7 +10,7 @@
 
 //-------------------------------------------------------------------------
 // Reports page: week totals as tiles, a bar chart per day, and time per project.
-// Summary stacks the bars by project; Workload compares each weekday with the work-hours target.
+// Summary stacks the bars by project; Workload compares each day with the work-hours target on chosen work days.
 //-------------------------------------------------------------------------
 
 namespace Kui::UI
@@ -56,10 +56,38 @@ namespace Kui::UI
         bool const isWorkload = m_reportTab == 1;
         if( isWorkload )
         {
+            // Work-day toggles (Mon..Sun), then hours per work day
+            constexpr char const* dayLetters[] = { "M", "T", "W", "T", "F", "S", "S" };
             float const dragWidth = Px( 80 );
-            char const* pLabel = "Work hours per weekday";
+            float const dayGap = Px( 8 );
+            char const* pLabel = "Work hours per day";
+            float daysWidth = 0;
+            for( char const* pLetter : dayLetters )
+            {
+                daysWidth += TextWidth( pLetter, 14.0f, true ) + dayGap;
+            }
+
+            float const spacing = ImGui::GetStyle().ItemSpacing.x;
             ImGui::SameLine( 0, 0 );
-            ImGui::SetCursorPosX( ImGui::GetWindowWidth() - dragWidth - ImGui::CalcTextSize( pLabel ).x - ImGui::GetStyle().ItemSpacing.x );
+            ImGui::SetCursorPosX( ImGui::GetWindowWidth() - dragWidth - ImGui::CalcTextSize( pLabel ).x - spacing - daysWidth - Px( 16 ) );
+            for( int i = 0; i < 7; i++ )
+            {
+                bool const on = ( m_settings.m_workDays >> i ) & 1;
+                ImGui::PushID( i );
+                if( FlatButton( "##workDay", dayLetters[i], 14.0f, on ? g_accent : Fade( g_muted, 0.6f ), true ) )
+                {
+                    m_settings.m_workDays ^= 1u << i;
+                    Save();
+                }
+                if( ImGui::IsItemHovered() )
+                {
+                    ImGui::SetTooltip( "%s", on ? "Work day (click to turn off)" : "Day off (click to make it a work day)" );
+                }
+                ImGui::PopID();
+                ImGui::SameLine( 0, dayGap );
+            }
+
+            ImGui::SameLine( 0, Px( 16 ) - dayGap );
             Label( pLabel, g_bodySize, g_muted );
             ImGui::SameLine();
             ImGui::SetNextItemWidth( dragWidth );
@@ -71,7 +99,8 @@ namespace Kui::UI
 
         // Week numbers
         float const workHours = m_settings.m_workHours;
-        auto const target = [workHours]( int i ) { return i < 5 ? static_cast<int64_t>( workHours * 3600.0f ) : 0; };
+        uint32_t const workDays = m_settings.m_workDays;
+        auto const target = [workHours, workDays]( int i ) { return ( ( workDays >> i ) & 1 ) ? static_cast<int64_t>( workHours * 3600.0f ) : 0; };
         Core::Day const monday = Core::WeekMonday( today, m_week );
         std::vector<ProjectSecs> days;
         std::vector<int64_t> totals;

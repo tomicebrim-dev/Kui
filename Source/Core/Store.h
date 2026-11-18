@@ -65,6 +65,7 @@ namespace Kui::Core
         int                 m_idleMinutes = 10;
         bool                m_firstRunDone = false;
         float               m_workHours = 8.0f;
+        uint32_t            m_workDays = 0x1f;      // Bit 0 = Monday ... bit 6 = Sunday
         float               m_textScale = 1.2f;     // Multiplies every text size
         bool                m_checkUpdates = true;  // Look for a new release when the window opens
         bool                m_autostart = true;     // The user's choice; the installer rewrites the Run key on every update
