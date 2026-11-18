@@ -164,11 +164,13 @@ namespace Kui::Tests
         settings.m_checkUpdates = false;
         settings.m_autostart = false;
         settings.m_projectColors = { { "Recording", 0xff3366ccu } };
+        settings.m_nonWorkProjects = { "Wasted time" };
         store.SaveSettings( settings );
         Core::Settings back = store.LoadSettings();
         CHECK( back.m_rules.size() == 1 && back.m_rules[0].m_mode == Core::Mode::AllWords && back.m_workHours == 7.5f && back.m_workDays == 0x7f );
         CHECK( back.m_textScale == 1.4f && !back.m_checkUpdates && !back.m_autostart );
         CHECK( back.m_projectColors.size() == 1 && back.m_projectColors["Recording"] == 0xff3366ccu );
+        CHECK( back.m_nonWorkProjects.size() == 1 && back.m_nonWorkProjects.contains( "Wasted time" ) );
 
         // A save while the other process is reading the file waits for the read instead of being dropped
         {

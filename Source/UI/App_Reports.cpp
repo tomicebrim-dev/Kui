@@ -116,7 +116,8 @@ namespace Kui::UI
             int64_t dayTotal = 0;
             for( auto const& [project, secs] : days.back() )
             {
-                dayTotal += secs;
+                bool const counts = !isWorkload || !m_settings.m_nonWorkProjects.contains( project );
+                dayTotal += counts ? secs : 0;
                 auto const found = std::ranges::find( byProject, project, &ProjectSecs::value_type::first );
                 if( found != byProject.end() )
                 {
@@ -325,6 +326,51 @@ namespace Kui::UI
             ImGui::EndGroup();
         }
         EndCard();
+
+        // Which of this week's projects count as work
+        if( isWorkload && !byProject.empty() )
+        {
+            ImGui::Spacing();
+            BeginCard( "workProjects" );
+            Label( "Counts as work", 15.5f, g_text, true );
+            Caption( "Click a project to leave it out of the workload, e.g. wasted time." );
+            float const rightEdge = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+            for( size_t i = 0; i < byProject.size(); i++ )
+            {
+                std::string const& project = byProject[i].first;
+                bool const counts = !m_settings.m_nonWorkProjects.contains( project );
+                std::string const name = project.empty() ? "No project" : project;
+                std::string const text = counts ? name : name + " (not work)";
+                if( i > 0 )
+                {
+                    SameLineIfFits( Px( 18 ) + TextWidth( text, 14.0f ), rightEdge, Px( 16 ) );
+                }
+
+                ImGui::PushID( static_cast<int>( i ) );
+                ImGui::BeginGroup();
+                Dot( counts ? ColorFor( project ) : Fade( g_muted, 0.4f ) );
+                ImGui::SameLine( 0, Px( 6 ) );
+                if( FlatButton( "##workProject", text, 14.0f, counts ? g_text : Fade( g_muted, 0.6f ) ) )
+                {
+                    if( counts )
+                    {
+                        m_settings.m_nonWorkProjects.insert( project );
+                    }
+                    else
+                    {
+                        m_settings.m_nonWorkProjects.erase( project );
+                    }
+                    Save();
+                }
+                ImGui::EndGroup();
+                if( ImGui::IsItemHovered() )
+                {
+                    ImGui::SetTooltip( "%s", counts ? "Counts as work (click to leave out)" : "Not work (click to count it)" );
+                }
+                ImGui::PopID();
+            }
+            EndCard();
+        }
 
         // Time per project
         if( !isWorkload && total > 0 )

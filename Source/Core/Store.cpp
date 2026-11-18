@@ -262,6 +262,7 @@ namespace Kui::Core
         Get( *j, "check_updates", s.m_checkUpdates );
         Get( *j, "autostart", s.m_autostart );
         Get( *j, "project_colors", s.m_projectColors );
+        Get( *j, "non_work_projects", s.m_nonWorkProjects );
         return s;
     }
 
@@ -295,6 +296,7 @@ namespace Kui::Core
         j["check_updates"] = s.m_checkUpdates;
         j["autostart"] = s.m_autostart;
         j["project_colors"] = s.m_projectColors;
+        j["non_work_projects"] = s.m_nonWorkProjects;
         WriteAtomic( File( "settings.json" ), j.dump( 2 ) );
     }
 

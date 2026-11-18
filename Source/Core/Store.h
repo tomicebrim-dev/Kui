@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -70,6 +71,7 @@ namespace Kui::Core
         bool                m_checkUpdates = true;  // Look for a new release when the window opens
         bool                m_autostart = true;     // The user's choice; the installer rewrites the Run key on every update
         std::map<std::string, uint32_t> m_projectColors;    // Picked colors (ImU32) by project; others use the palette
+        std::set<std::string>           m_nonWorkProjects;  // Projects left out of Workload (e.g. wasted time)
     };
 
     // The one running timer, started by hand or by a rule
