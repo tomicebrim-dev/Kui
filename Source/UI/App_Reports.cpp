@@ -116,7 +116,7 @@ namespace Kui::UI
             int64_t dayTotal = 0;
             for( auto const& [project, secs] : days.back() )
             {
-                bool const counts = !isWorkload || !m_settings.m_nonWorkProjects.contains( project );
+                bool const counts = !isWorkload || ( project != Core::g_idleProject && !m_settings.m_nonWorkProjects.contains( project ) );
                 dayTotal += counts ? secs : 0;
                 auto const found = std::ranges::find( byProject, project, &ProjectSecs::value_type::first );
                 if( found != byProject.end() )
@@ -335,13 +335,20 @@ namespace Kui::UI
             Label( "Counts as work", 15.5f, g_text, true );
             Caption( "Click a project to leave it out of the workload, e.g. wasted time." );
             float const rightEdge = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+            bool isFirst = true;
             for( size_t i = 0; i < byProject.size(); i++ )
             {
+                // Idle never counts, so it has no switch
                 std::string const& project = byProject[i].first;
+                if( project == Core::g_idleProject )
+                {
+                    continue;
+                }
+
                 bool const counts = !m_settings.m_nonWorkProjects.contains( project );
                 std::string const name = project.empty() ? "No project" : project;
                 std::string const text = counts ? name : name + " (not work)";
-                if( i > 0 )
+                if( !std::exchange( isFirst, false ) )
                 {
                     SameLineIfFits( Px( 18 ) + TextWidth( text, 14.0f ), rightEdge, Px( 16 ) );
                 }

@@ -77,13 +77,16 @@ namespace Kui::Core
     // Rule id of the idle timer; real rule ids start at 1
     constexpr uint64_t g_idleRule = 0;
 
+    // Project of the idle timer; never counts as work
+    constexpr char const* g_idleProject = "Idle";
+
     // The one running timer, started by hand or by a rule
     struct Timer
     {
         public:
 
         // The timer the tracker runs whenever nothing else is
-        static Timer Idle( int64_t start ) { return { start, "Idle", "Idle", g_idleRule }; }
+        static Timer Idle( int64_t start ) { return { start, "Idle", g_idleProject, g_idleRule }; }
 
         // Is this the tracker's idle timer?
         bool IsIdle() const { return m_rule == g_idleRule; }
