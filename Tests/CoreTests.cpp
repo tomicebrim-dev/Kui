@@ -155,6 +155,15 @@ namespace Kui::Tests
         loaded = store.LoadEntries();
         CHECK( loaded.size() == 4 && loaded.back().m_description == "run" && loaded.back().m_end - loaded.back().m_start == 300 );
 
+        // Idle timer survives the timer.json round trip and a hand-started timer replaces it
+        store.StartTimer( Core::Timer::Idle( t + 2000 ) );
+        CHECK( store.LoadTimer()->IsIdle() && !( Core::Timer{ t, "run", "", std::nullopt }.IsIdle() ) );
+        store.StartTimer( Core::Timer{ t + 2100, "run", "", std::nullopt } );
+        CHECK( !store.LoadTimer()->IsIdle() );
+        store.StopTimer( t + 2200 );
+        loaded = store.LoadEntries();
+        CHECK( loaded.size() == 6 && loaded[4].m_project == "Idle" && loaded[4].m_isAuto );
+
         // Settings round trip
         Core::Settings settings;
         settings.m_rules = { MakeRule( "excel budget", Core::Mode::AllWords ) };

@@ -145,7 +145,7 @@ namespace Kui::UI
 
     void App::Toggle()
     {
-        if( m_timer.has_value() )
+        if( m_timer.has_value() && !m_timer->IsIdle() )
         {
             Stop();
             return;

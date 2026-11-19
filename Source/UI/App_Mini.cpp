@@ -18,7 +18,7 @@ namespace Kui::UI
 {
     void App::DrawMini()
     {
-        bool const running = m_timer.has_value();
+        bool const running = m_timer.has_value() && !m_timer->IsIdle();
         std::string& description = running ? m_timer->m_description : m_description;
         std::string& project = running ? m_timer->m_project : m_project;
 

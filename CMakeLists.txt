@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(Kui VERSION 1.3.5 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
+project(Kui VERSION 1.3.6 DESCRIPTION "Automatic time tracker" LANGUAGES CXX RC)
 
 if(NOT WIN32)
   message(FATAL_ERROR "Kui is Windows-only (Win32 + Direct3D 11).")

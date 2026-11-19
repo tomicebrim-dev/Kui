@@ -244,22 +244,30 @@ namespace Kui::Tracker
                 continue;
             }
 
+            // One read per tick; the window may change timer.json between ticks
+            std::optional<Core::Timer> timer = store.LoadTimer();
+
+            // Nothing running: idle fills the gap until a rule or a hand-started timer takes over
+            if( !timer )
+            {
+                timer = Core::Timer::Idle( t );
+                store.StartTimer( *timer );
+            }
+
             int64_t const idle = Platform::IdleSecs();
             if( settings.m_idleOn && idle >= static_cast<int64_t>( settings.m_idleMinutes ) * 60 )
             {
-                std::optional<Core::Timer> const timer = store.LoadTimer();
-                if( timer && timer->m_rule )
+                // Away: a rule timer ends when input stopped, and idle runs from there
+                if( timer->m_rule && !timer->IsIdle() )
                 {
-                    store.StopTimer( t - idle );
+                    store.StartTimer( Core::Timer::Idle( t - idle ) );
                 }
                 pending.reset();
                 lastSeen.reset(); // When they come back, the window in front is checked again
                 continue;
             }
 
-            // One read per tick; the window may change timer.json between ticks
-            std::optional<Core::Timer> const timer = store.LoadTimer();
-            std::optional<uint64_t> runningRule = timer ? timer->m_rule : std::nullopt;
+            std::optional<uint64_t> runningRule = timer->IsIdle() ? std::nullopt : timer->m_rule;
 
             // The tracked program was closed: end its timer, whatever "stop on no match" says.
             // ponytail: window scan every 5 s (EnumWindows + a process snapshot is the tracker's priciest call); end time can be up to 5 s late.
@@ -273,7 +281,7 @@ namespace Kui::Tracker
                     std::vector<Platform::WindowInfo> const windows = Platform::OpenWindows();
                     if( std::none_of( windows.begin(), windows.end(), isOpen ) )
                     {
-                        store.StopTimer( t );
+                        store.StartTimer( Core::Timer::Idle( t ) );
                         runningRule.reset();
                     }
                 }
@@ -299,7 +307,7 @@ namespace Kui::Tracker
                 pending.reset();
                 if( settings.m_stopOnNoMatch && runningRule )
                 {
-                    store.StopTimer( t );
+                    store.StartTimer( Core::Timer::Idle( t ) );
                 }
                 continue;
             }

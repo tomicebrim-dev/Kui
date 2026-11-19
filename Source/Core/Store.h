@@ -74,9 +74,24 @@ namespace Kui::Core
         std::set<std::string>           m_nonWorkProjects;  // Projects left out of Workload (e.g. wasted time)
     };
 
+    // Rule id of the idle timer; real rule ids start at 1
+    constexpr uint64_t g_idleRule = 0;
+
     // The one running timer, started by hand or by a rule
     struct Timer
     {
+        public:
+
+        // The timer the tracker runs whenever nothing else is
+        static Timer Idle( int64_t start ) { return { start, "Idle", "Idle", g_idleRule }; }
+
+        // Is this the tracker's idle timer?
+        bool IsIdle() const { return m_rule == g_idleRule; }
+
+        //-------------------------------------------------------------------------
+
+        public:
+
         int64_t                     m_start = 0;
         std::string                 m_description;
         std::string                 m_project;

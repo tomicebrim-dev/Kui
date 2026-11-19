@@ -19,7 +19,7 @@ namespace Kui::UI
     {
         BeginCard( "topBar", g_card, 14.0f, 0.0f );   // Edge-to-edge strip; only its bottom line shows
         ImGui::Indent( Px( 10 ) );                      // Line up with the view's 24 px margin
-        bool const running = m_timer.has_value();
+        bool const running = m_timer.has_value() && !m_timer->IsIdle();
         std::string& description = running ? m_timer->m_description : m_description;
         std::string& project = running ? m_timer->m_project : m_project;
 
@@ -27,6 +27,10 @@ namespace Kui::UI
         if( running )
         {
             subtitle = ( m_timer->m_rule.has_value() ? "Auto-tracked since " : "Started " ) + Core::ClockHM( m_timer->m_start );
+        }
+        else if( m_timer.has_value() )
+        {
+            subtitle = "Idle since " + Core::ClockHM( m_timer->m_start ) + ". Press Enter to start.";
         }
 
         // One row: description, project, clock, watch button, play button
@@ -77,7 +81,7 @@ namespace Kui::UI
         if( DrawWatchButton() )
         {
             m_settings.m_tracking = !m_settings.m_tracking;
-            if( !m_settings.m_tracking && running && m_timer->m_rule.has_value() )
+            if( !m_settings.m_tracking && m_timer.has_value() && m_timer->m_rule.has_value() )
             {
                 Stop();
             }
@@ -86,12 +90,12 @@ namespace Kui::UI
 
         x += Px( 28 ) + gap;
         ImGui::SetCursorScreenPos( ImVec2( x, origin.y ) );
-        toggle |= PlayButton( m_timer.has_value() );
+        toggle |= PlayButton( running );
 
         ImGui::SetCursorScreenPos( origin );
         ImGui::Dummy( ImVec2( avail, rowHeight ) );
 
-        if( !m_timer.has_value() && ( descriptionFocused || m_suggestionsHovered ) )
+        if( !running && ( descriptionFocused || m_suggestionsHovered ) )
         {
             DrawSuggestions();
         }
